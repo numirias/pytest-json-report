@@ -20,7 +20,7 @@ $ pytest -v --json-report --json-report-file results.json tests/
 $ cat results.json
 [{"path": "tests/test_app.py", "line": 17, "domain": "TestMain.test_main", ...}, {...}, ...]
 ```
-By default, the report is saved in `.report.json`. The plugin provides these switches:
+By default, the report is saved in `.report.json`. Also, these switches are available:
 
 ```
 $ pytest -h
@@ -34,7 +34,7 @@ reporting test results as JSON:
 
 ## Format
 
-The JSON report is a list of test result items (dicts):
+The JSON report is an array of test result objects:
 
 ```python
 [
@@ -45,7 +45,7 @@ The JSON report is a list of test result items (dicts):
         'outcome': 'passed',
         'when': 'call',
         'nodeid': 'tests/test_foo.py::test_some_foo',
-        'duration': 0.00016',
+        'duration': 0.00016,
         'keywords': {'test_some_foo': 1, ...},
         'longrepr': '... assert False ...',
     },
