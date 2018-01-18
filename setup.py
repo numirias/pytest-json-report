@@ -7,7 +7,7 @@ setup(
     packages=['pytest_jsonreport'],
     author='numirias',
     author_email='numirias@users.noreply.github.com',
-    version='0.1',
+    version='0.2',
     url='https://github.com/numirias/pytest-json-report',
     license='MIT',
     entry_points={
