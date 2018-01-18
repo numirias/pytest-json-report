@@ -47,3 +47,4 @@ def test_jsonreport_report_file(jr_testdir):
     assert passed['line'] == 0
     assert passed['domain'] == 'test_foo'
     assert failed['line'] == 4
+    assert 'assert False' in failed['longrepr']

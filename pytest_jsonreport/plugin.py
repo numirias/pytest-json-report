@@ -20,6 +20,9 @@ class PytestJSONReport:
                     'outcome': getattr(report, 'outcome', None),
                     'when': getattr(report, 'when', None),
                     'nodeid': getattr(report, 'nodeid', None),
+                    'duration': getattr(report, 'duration', None),
+                    'keywords': getattr(report, 'keywords', {}),
+                    'longrepr': str(getattr(report, 'longrepr', '')),
                 }
                 items.append(item)
         with open(self.report_file, 'w') as f:
