@@ -10,11 +10,15 @@ import pytest
 class JSONReport:
     """The pytest JSON report plugin."""
 
-    def __init__(self, report_file):
-        self.report_file = report_file
+    def __init__(self, config):
+        self.config = config
         self.reports = OrderedDict()
         self.start_time = None
         self.report_size = 0
+
+    @property
+    def report_file(self):
+        return self.config.option.json_report_file
 
     def pytest_sessionstart(self, session):
         self.start_time = time.time()
@@ -27,7 +31,7 @@ class JSONReport:
 
     def pytest_sessionfinish(self, session):
         duration = time.time() - self.start_time
-        json_tests = [self.json_test_item(r) for r in self.reports.values()]
+        json_tests = list(map(self.json_test_item, self.reports.values()))
         json_report = {
             'created': datetime.now(timezone.utc).astimezone().isoformat(),
             'duration': duration,
@@ -49,15 +53,14 @@ class JSONReport:
         terminalreporter.write_line('report written to: %s (%d bytes)' %
                                     (self.report_file, self.report_size))
 
-    @staticmethod
-    def json_test_item(reports):
+    def json_test_item(self, reports):
         """Return JSON-serializable object for a list of test reports."""
         any_report = reports[0]
         nodeid = any_report.nodeid
         path, line, domain = any_report.location
         keywords = any_report.keywords
-        outcome = JSONReport.total_outcome(reports)
-        stages = {r.when: JSONReport.json_stage(r) for r in reports}
+        outcome = self.total_outcome(reports)
+        stages = {r.when: self.json_stage(r) for r in reports}
         return {
             'nodeid': nodeid,
             'path': path,
@@ -68,14 +71,15 @@ class JSONReport:
             **stages
         }
 
-    @staticmethod
-    def total_outcome(reports):
+    def total_outcome(self, reports):
         """Return actual test outcome of the group of reports."""
-        return next((r.outcome for r in reports if r.outcome != 'passed'),
-                    'passed')
+        for report in reports:
+            cat = self.config.hook.pytest_report_teststatus(report=report)[0]
+            if cat not in ['passed', '']:
+                return cat
+        return 'passed'
 
-    @staticmethod
-    def json_stage(report):
+    def json_stage(self, report):
         """Return JSON-serializable object for the stage info of a report."""
         duration = report.duration
         outcome = report.outcome
@@ -98,7 +102,7 @@ def pytest_addoption(parser):
 def pytest_configure(config):
     if not config.option.json_report:
         return
-    plugin = JSONReport(config.option.json_report_file)
+    plugin = JSONReport(config)
     config._json_report = plugin
     config.pluginmanager.register(plugin)
 

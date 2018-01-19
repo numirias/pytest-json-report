@@ -4,46 +4,52 @@ import pytest
 
 @pytest.fixture
 def misc_testdir(testdir):
-    # Test fixture borrowed from github.com/mattcl/pytest-json
+    # Test cases borrowed from github.com/mattcl/pytest-json
     testdir.makepyfile("""
         import pytest
+
+
         @pytest.fixture
         def setup_teardown_fixture(request):
             print('setting up')
             def fn():
                 print('tearing down')
             request.addfinalizer(fn)
+
         @pytest.fixture
         def fail_setup_fixture(request):
-            assert 1 == 3
+            assert False
+
         @pytest.fixture
         def fail_teardown_fixture(request):
             def fn():
-                assert 1 == 3
+                assert False
             request.addfinalizer(fn)
-        def test_basic(json_report_path):
-            print('call str')
-            assert json_report_path == "herpaderp.json"
+
+
+        def test_pass():
+            assert True
+
         def test_fail_with_fixture(setup_teardown_fixture):
-            print('call str 2')
-            assert 1 == 2
+            assert False
+
         @pytest.mark.xfail(reason='testing xfail')
-        def test_xfailed():
-            print('I am xfailed')
-            assert 1 == 2
+        def test_xfail():
+            assert False
+
         @pytest.mark.xfail(reason='testing xfail')
-        def test_xfailed_but_passing():
-            print('I am xfailed but passing')
-            assert 1 == 1
+        def test_xfail_but_passing():
+            assert True
+
         def test_fail_during_setup(fail_setup_fixture):
-            print('I failed during setup')
-            assert 1 == 1
+            assert True
+
         def test_fail_during_teardown(fail_teardown_fixture):
-            print('I will fail during teardown')
-            assert 1 == 1
+            assert True
+
         @pytest.mark.skipif(True, reason='testing skip')
-        def test_skipped():
-            assert 1 == 2
+        def test_skip():
+            assert False
     """)
     return testdir
 
@@ -54,6 +60,11 @@ def json_data(misc_testdir):
     with open(str(misc_testdir.tmpdir / '.report.json')) as f:
         data = json.load(f)
     return data
+
+
+@pytest.fixture
+def tests_by_name(json_data):
+    return {test['domain'][5:]: test for test in json_data['tests']}
 
 
 def test_arguments_in_help(misc_testdir):
@@ -81,6 +92,14 @@ def test_report_context(json_data):
                                             'pytest', 'platform', 'tests'])
 
 
-def test_report_tests(json_data):
-    tests = json_data['tests']
+def test_report_tests(json_data, tests_by_name):
+    tests = tests_by_name
     assert len(tests) == 7
+
+    assert tests['pass']['outcome'] == 'passed'
+    assert tests['fail_with_fixture']['outcome'] == 'failed'
+    assert tests['xfail']['outcome'] == 'xfailed'
+    assert tests['xfail_but_passing']['outcome'] == 'xpassed'
+    assert tests['fail_during_setup']['outcome'] == 'error'
+    assert tests['fail_during_teardown']['outcome'] == 'error'
+    assert tests['skip']['outcome'] == 'skipped'

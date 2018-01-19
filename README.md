@@ -80,6 +80,6 @@ See the pytest documentation on [`_pytest.runner.TestReport`](https://docs.pytes
 
 ## Similar tools
 
-- [pytest-json](https://github.com/mattcl/pytest-json) has some neat features but appears to be unmaintained. I borrowed some test cases from there.
+- [pytest-json](https://github.com/mattcl/pytest-json) has some neat features but appears to be unmaintained. I borrowed some features and test cases from there.
 
 - [tox has a swtich](http://tox.readthedocs.io/en/latest/example/result.html) to create a JSON report including a test result summary. However, it just provides the overall outcome without test details.
