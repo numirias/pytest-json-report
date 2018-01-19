@@ -3,48 +3,84 @@ import pytest
 
 
 @pytest.fixture
-def jr_testdir(testdir):
+def misc_testdir(testdir):
+    # Test fixture borrowed from github.com/mattcl/pytest-json
     testdir.makepyfile("""
-        def test_foo():
-            assert True
-        def test_bar():
-            assert False
-        def test_baz():
-            assert False
+        import pytest
+        @pytest.fixture
+        def setup_teardown_fixture(request):
+            print('setting up')
+            def fn():
+                print('tearing down')
+            request.addfinalizer(fn)
+        @pytest.fixture
+        def fail_setup_fixture(request):
+            assert 1 == 3
+        @pytest.fixture
+        def fail_teardown_fixture(request):
+            def fn():
+                assert 1 == 3
+            request.addfinalizer(fn)
+        def test_basic(json_report_path):
+            print('call str')
+            assert json_report_path == "herpaderp.json"
+        def test_fail_with_fixture(setup_teardown_fixture):
+            print('call str 2')
+            assert 1 == 2
+        @pytest.mark.xfail(reason='testing xfail')
+        def test_xfailed():
+            print('I am xfailed')
+            assert 1 == 2
+        @pytest.mark.xfail(reason='testing xfail')
+        def test_xfailed_but_passing():
+            print('I am xfailed but passing')
+            assert 1 == 1
+        def test_fail_during_setup(fail_setup_fixture):
+            print('I failed during setup')
+            assert 1 == 1
+        def test_fail_during_teardown(fail_teardown_fixture):
+            print('I will fail during teardown')
+            assert 1 == 1
+        @pytest.mark.skipif(True, reason='testing skip')
+        def test_skipped():
+            assert 1 == 2
     """)
     return testdir
 
 
-def test_arguments_in_help(jr_testdir):
-    res = jr_testdir.runpytest('--help')
+@pytest.fixture
+def json_data(misc_testdir):
+    misc_testdir.runpytest('--json-report')
+    with open(str(misc_testdir.tmpdir / '.report.json')) as f:
+        data = json.load(f)
+    return data
+
+
+def test_arguments_in_help(misc_testdir):
+    res = misc_testdir.runpytest('--help')
     res.stdout.fnmatch_lines(['*json-report*'])
 
 
-def test_no_jsonreport(jr_testdir):
-    jr_testdir.runpytest()
-    assert not (jr_testdir.tmpdir / '.report.json').exists()
+def test_no_report(misc_testdir):
+    misc_testdir.runpytest()
+    assert not (misc_testdir.tmpdir / '.report.json').exists()
 
 
-def test_jsonreport_create_report(jr_testdir):
-    jr_testdir.runpytest('--json-report')
-    assert (jr_testdir.tmpdir / '.report.json').exists()
+def test_create_report(misc_testdir):
+    misc_testdir.runpytest('--json-report')
+    assert (misc_testdir.tmpdir / '.report.json').exists()
 
 
-def test_jsonreport_create_report_with_custom_file(jr_testdir):
-    jr_testdir.runpytest('--json-report', '--json-report-file=foo.js')
-    assert (jr_testdir.tmpdir / 'foo.js').exists()
+def test_create_report_with_custom_file(misc_testdir):
+    misc_testdir.runpytest('--json-report', '--json-report-file=foo.js')
+    assert (misc_testdir.tmpdir / 'foo.js').exists()
 
 
-def test_jsonreport_report_file(jr_testdir):
-    jr_testdir.runpytest('--json-report')
-    with open(str(jr_testdir.tmpdir / '.report.json')) as f:
-        data = json.load(f)
+def test_report_context(json_data):
+    assert all(key in json_data for key in ['created', 'duration', 'python',
+                                            'pytest', 'platform', 'tests'])
 
-    assert len(data) == 3
-    passed = next(x for x in data if x['outcome'] == 'passed')
-    failed = next(x for x in data
-                  if x['outcome'] == 'failed' and x['domain'] == 'test_baz')
-    assert passed['line'] == 0
-    assert passed['domain'] == 'test_foo'
-    assert failed['line'] == 4
-    assert 'assert False' in failed['longrepr']
+
+def test_report_tests(json_data):
+    tests = json_data['tests']
+    assert len(tests) == 7
