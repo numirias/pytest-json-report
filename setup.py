@@ -7,7 +7,7 @@ setup(
     packages=['pytest_jsonreport'],
     author='numirias',
     author_email='numirias@users.noreply.github.com',
-    version='0.2',
+    version='0.3',
     url='https://github.com/numirias/pytest-json-report',
     license='MIT',
     install_requires=['pytest>=3.3.2'],
@@ -17,7 +17,7 @@ setup(
         ]
     },
     classifiers=[
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 4 - Beta',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.5',
