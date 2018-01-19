@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 import platform
 import time
@@ -14,6 +14,7 @@ class JSONReport:
         self.report_file = report_file
         self.reports = OrderedDict()
         self.start_time = None
+        self.report_size = 0
 
     def pytest_sessionstart(self, session):
         self.start_time = time.time()
@@ -28,7 +29,7 @@ class JSONReport:
         duration = time.time() - self.start_time
         json_tests = [self.json_test_item(r) for r in self.reports.values()]
         json_report = {
-            'created': datetime.now().astimezone().isoformat(),
+            'created': datetime.now(timezone.utc).astimezone().isoformat(),
             'duration': duration,
             'python': platform.python_version(),
             'pytest': pytest.__version__,
@@ -41,6 +42,12 @@ class JSONReport:
         """Save the test report to JSON file."""
         with open(self.report_file, 'w') as f:
             json.dump(json_report, f)
+            self.report_size = f.tell()
+
+    def pytest_terminal_summary(self, terminalreporter):
+        terminalreporter.write_sep('-', 'JSON report')
+        terminalreporter.write_line('report written to: %s (%d bytes)' %
+                                    (self.report_file, self.report_size))
 
     @staticmethod
     def json_test_item(reports):
@@ -63,7 +70,7 @@ class JSONReport:
 
     @staticmethod
     def total_outcome(reports):
-        """Return actual test outcome of the group of report."""
+        """Return actual test outcome of the group of reports."""
         return next((r.outcome for r in reports if r.outcome != 'passed'),
                     'passed')
 

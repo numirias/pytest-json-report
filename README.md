@@ -16,9 +16,9 @@ pip install pytest-json-report --upgrade
 Usage example:
 
 ```
-$ pytest -v --json-report --json-report-file results.json tests/
-$ cat results.json
-{"created": "...", ..., "tests":[{"nodeid": "test_foo.py", "outcome": "passed", ...}, {...}, ...]}
+$ pytest -v --json-report --json-report-file my_report.json tests/
+$ cat my_report.json
+{"created": "2018-01-19T20:58:06.296891+02:00", ... "tests":[{"nodeid": "test_foo.py", "outcome": "passed", ...}, {...}, ...]}
 ```
 By default, the report is saved in `.report.json`. Also, these switches are available:
 
@@ -34,7 +34,7 @@ reporting test results as JSON:
 
 ## Format
 
-The JSON report contains metadata and an array of test objects. E.g.:
+The JSON report contains metadata and an array of test result objects:
 
 ```python
 {
@@ -45,15 +45,14 @@ The JSON report contains metadata and an array of test objects. E.g.:
     "platform": "Linux-1.23.5-1-ARCH-x86_64-with-arch",
     "tests": [
         {
-            "nodeid": "test_report_tests.py::test_fail_with_fixture",
-            "path": "test_report_tests.py",
+            "nodeid": "test_foo.py::test_bar",
+            "path": "test_foo.py",
             "line": 18,
-            "domain": "test_fail_with_fixture",
+            "domain": "test_bar",
             "outcome": "failed",
             "keywords": {
-                "test_report_tests0": 1,
-                "test_fail_with_fixture": 1,
-                "test_report_tests.py": 1
+                "test_bar": 1,
+                ...
             },
             "setup": {
                 "duration": 0.00031757354736328125,
@@ -63,7 +62,7 @@ The JSON report contains metadata and an array of test objects. E.g.:
             "call": {
                 "duration": 0.0002713203430175781,
                 "outcome": "failed",
-                "longrepr": "setup_teardown_fixture = None\n ..."
+                "longrepr": "bad_value = None\n ..."
             },
             "teardown": {
                 "duration": 0.00019168853759765625,
@@ -76,4 +75,11 @@ The JSON report contains metadata and an array of test objects. E.g.:
 }
 
 ```
-See the pytest documentation on [`_pytest.runner.TestReport`](https://docs.pytest.org/en/latest/writing_plugins.html#_pytest.runner.TestReport) for details on what the individual keys of the test objects mean. Note that `(path, line, domain)` is the `TestReport.location` tuple.
+See the pytest documentation on [`_pytest.runner.TestReport`](https://docs.pytest.org/en/latest/writing_plugins.html#_pytest.runner.TestReport) for details on what the keys of the test result objects mean. Note that `(path, line, domain)` is the `TestReport.location` tuple.
+
+
+## Similar tools
+
+- [pytest-json](https://github.com/mattcl/pytest-json) has some neat features but appears to be unmaintained. I borrowed some test cases from there.
+
+- [tox has a swtich](http://tox.readthedocs.io/en/latest/example/result.html) to create a JSON report including a test result summary. However, it just provides the overall outcome without test details.
