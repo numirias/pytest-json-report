@@ -20,7 +20,7 @@ $ pytest -v --json-report --json-report-file my_report.json tests/
 $ cat my_report.json
 {"created": "2018-01-19T20:58:06.296891+02:00", ... "tests":[{"nodeid": "test_foo.py", "outcome": "passed", ...}, {...}, ...]}
 ```
-By default, the report is saved in `.report.json`. Also, these switches are available:
+By default, the report is saved in `.report.json`. Available settings:
 
 ```
 $ pytest -h
@@ -30,11 +30,15 @@ reporting test results as JSON:
   --json-report-file=JSON_REPORT_FILE
                         target file to save JSON report
 ...
+[pytest] ini-options in the first pytest.ini|tox.ini|setup.cfg file found:
+...
+  json_report_file (string) target file to save JSON report
+...
 ```
 
 ## Format
 
-The JSON report contains metadata and an array of test result objects:
+The JSON report contains metadata of the session and an array of test result objects:
 
 ```python
 {

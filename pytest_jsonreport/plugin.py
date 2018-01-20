@@ -18,7 +18,9 @@ class JSONReport:
 
     @property
     def report_file(self):
-        return self.config.option.json_report_file
+        return self.config.option.json_report_file or \
+               self.config.getini('json_report_file') or \
+               '.report.json'
 
     def pytest_sessionstart(self, session):
         self.start_time = time.time()
@@ -94,13 +96,14 @@ class JSONReport:
 def pytest_addoption(parser):
     group = parser.getgroup('jsonreport', 'reporting test results as JSON')
     group.addoption('--json-report', default=False, action='store_true',
-                    help='create JSON report')
-    group.addoption('--json-report-file', default='.report.json',
-                    help='target file to save JSON report')
+                    help='enable JSON report')
+    group.addoption('--json-report-file',
+                    help='target path to save JSON report')
+    parser.addini('json_report_file', 'target file to save JSON report')
 
 
 def pytest_configure(config):
-    if not config.option.json_report:
+    if not (config.option.json_report or config.getini('json_report_file')):
         return
     plugin = JSONReport(config)
     config._json_report = plugin

@@ -69,7 +69,11 @@ def tests_by_name(json_data):
 
 def test_arguments_in_help(misc_testdir):
     res = misc_testdir.runpytest('--help')
-    res.stdout.fnmatch_lines(['*json-report*'])
+    res.stdout.fnmatch_lines([
+        '*json-report*',
+        '*json-report-file*',
+        '*json_report_file*',
+    ])
 
 
 def test_no_report(misc_testdir):
@@ -82,9 +86,27 @@ def test_create_report(misc_testdir):
     assert (misc_testdir.tmpdir / '.report.json').exists()
 
 
-def test_create_report_with_custom_file(misc_testdir):
-    misc_testdir.runpytest('--json-report', '--json-report-file=foo.js')
-    assert (misc_testdir.tmpdir / 'foo.js').exists()
+def test_create_report_file_from_arg(misc_testdir):
+    misc_testdir.runpytest('--json-report', '--json-report-file=arg.json')
+    assert (misc_testdir.tmpdir / 'arg.json').exists()
+
+
+def test_create_report_file_from_ini(misc_testdir):
+    misc_testdir.makeini("""
+        [pytest]
+        json_report_file = ini.json
+    """)
+    misc_testdir.runpytest()
+    assert (misc_testdir.tmpdir / 'ini.json').exists()
+
+
+def test_create_report_file_priority(misc_testdir):
+    misc_testdir.makeini("""
+        [pytest]
+        json_report_file = ini2.json
+    """)
+    misc_testdir.runpytest('--json-report', '--json-report-file=arg2.json')
+    assert (misc_testdir.tmpdir / 'arg2.json').exists()
 
 
 def test_report_context(json_data):
