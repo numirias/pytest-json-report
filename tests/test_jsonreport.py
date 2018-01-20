@@ -77,7 +77,7 @@ def misc_testdir(testdir):
 
 @pytest.fixture
 def json_data(misc_testdir):
-    misc_testdir.runpytest('--json-report')
+    misc_testdir.runpytest('-vv', '--json-report')
     with open(str(misc_testdir.tmpdir / '.report.json')) as f:
         data = json.load(f)
     return data
@@ -131,17 +131,17 @@ def test_create_report_file_priority(misc_testdir):
 
 
 def test_report_context(json_data):
-    assert all(key in json_data for key in ['created', 'duration', 'python',
-                                            'pytest', 'platform', 'tests'])
+    assert set(json_data) == set(['created', 'duration', 'python', 'pytest',
+                                  'platform', 'tests', 'summary'])
 
 
 def test_report_item_keys(tests):
-    assert set(tests['pass'].keys()) == set([
-        'nodeid', 'path', 'lineno', 'domain', 'outcome', 'keywords', 'setup',
-        'call', 'teardown'])
+    assert set(tests['pass']) == set(['nodeid', 'path', 'lineno', 'domain',
+                                      'outcome', 'keywords', 'setup', 'call',
+                                      'teardown'])
 
 
-def test_report_outcomes(json_data, tests):
+def test_report_outcomes(tests):
     assert len(tests) == 8
     assert tests['pass']['outcome'] == 'passed'
     assert tests['fail_with_fixture']['outcome'] == 'failed'
@@ -150,6 +150,18 @@ def test_report_outcomes(json_data, tests):
     assert tests['fail_during_setup']['outcome'] == 'error'
     assert tests['fail_during_teardown']['outcome'] == 'error'
     assert tests['skip']['outcome'] == 'skipped'
+
+
+def test_report_summary(json_data):
+    assert json_data['summary'] == {
+        'total': 8,
+        'passed': 1,
+        'failed': 2,
+        'skipped': 1,
+        'xpassed': 1,
+        'xfailed': 1,
+        'error': 2,
+    }
 
 
 def test_report_longrepr(json_data, tests):
@@ -199,6 +211,14 @@ def test_no_traceback(misc_testdir):
     with open(str(misc_testdir.tmpdir / '.report.json')) as f:
         tests_ = tests(json.load(f))
     assert 'traceback' not in tests_['fail_nested']['call']
+
+
+def test_summary_only(misc_testdir):
+    misc_testdir.runpytest('--json-report', '--json-report-summary')
+    with open(str(misc_testdir.tmpdir / '.report.json')) as f:
+        data = json.load(f)
+    assert 'summary' in data
+    assert 'tests' not in data
 
 
 def test_report_streams(tests):

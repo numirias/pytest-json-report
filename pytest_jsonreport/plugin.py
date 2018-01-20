@@ -1,4 +1,4 @@
-from collections import OrderedDict
+from collections import Counter, OrderedDict
 from datetime import datetime, timezone
 import json
 import platform
@@ -27,6 +27,10 @@ class JSONReport:
     def show_traceback(self):
         return not self.config.option.json_report_no_traceback
 
+    @property
+    def show_test_details(self):
+        return not self.config.option.json_report_summary
+
     def pytest_sessionstart(self, session):
         self.start_time = time.time()
 
@@ -38,14 +42,19 @@ class JSONReport:
 
     def pytest_sessionfinish(self, session):
         duration = time.time() - self.start_time
-        json_tests = list(map(self.json_test_result, self.reports.values()))
+        reports = self.reports.values()
+        json_tests = {
+            'tests': list(map(self.json_test_result, reports))
+        } if self.show_test_details else {}
+        json_summary = self.json_summary(reports)
         json_report = {
             'created': datetime.now(timezone.utc).astimezone().isoformat(),
             'duration': duration,
             'python': platform.python_version(),
             'pytest': pytest.__version__,
             'platform': platform.platform(),
-            'tests': json_tests,
+            'summary': json_summary,
+            **json_tests,
         }
         self.save_report(json_report)
 
@@ -130,6 +139,7 @@ class JSONReport:
         }
 
     def json_streams(self, report):
+        """Return JSON-serializable object for the standard stream outputs."""
         streams = {}
         sections = self.sections[report.nodeid]
         for when, key, content in sections:
@@ -139,16 +149,25 @@ class JSONReport:
                 streams[key] = content
         return streams
 
+    def json_summary(self, reports):
+        """Return JSON-serializable object summarizing the test results."""
+        summary = Counter([self.total_outcome(r) for r in reports])
+        summary['total'] = sum(summary.values())
+        return summary
+
 
 def pytest_addoption(parser):
     file_help_text = 'target path to save JSON report'
     traceback_help_text = 'don\'t include tracebacks in the JSON report'
+    summary_help_text = 'just create a summary without per-test details'
     group = parser.getgroup('jsonreport', 'reporting test results as JSON')
     group.addoption('--json-report', default=False, action='store_true',
                     help='enable JSON report')
     group.addoption('--json-report-file', help=file_help_text)
     group.addoption('--json-report-no-traceback', default=False,
                     action='store_true', help=traceback_help_text)
+    group.addoption('--json-report-summary', default=False,
+                    action='store_true', help=summary_help_text)
     parser.addini('json_report_file', file_help_text)
 
 
