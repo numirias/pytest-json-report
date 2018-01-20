@@ -4,7 +4,7 @@ import pytest
 
 @pytest.fixture
 def misc_testdir(testdir):
-    # Test cases borrowed from github.com/mattcl/pytest-json
+    # Some test cases borrowed from github.com/mattcl/pytest-json
     testdir.makepyfile("""
         import pytest
 
@@ -50,6 +50,22 @@ def misc_testdir(testdir):
         @pytest.mark.skipif(True, reason='testing skip')
         def test_skip():
             assert False
+
+        def test_fail_nested():
+            def baz(o=1):
+                c = 3
+                return 2 - c - None
+            def bar(m, n=5):
+                b = 2
+                print(m)
+                print('bar')
+                return baz()
+            def foo():
+                a = 1
+                print('foo')
+                v = [bar(x) for x in range(3)]
+                return v
+            foo()
     """)
     return testdir
 
@@ -63,7 +79,7 @@ def json_data(misc_testdir):
 
 
 @pytest.fixture
-def tests_by_name(json_data):
+def tests(json_data):
     return {test['domain'][5:]: test for test in json_data['tests']}
 
 
@@ -114,10 +130,8 @@ def test_report_context(json_data):
                                             'pytest', 'platform', 'tests'])
 
 
-def test_report_tests(json_data, tests_by_name):
-    tests = tests_by_name
-    assert len(tests) == 7
-
+def test_report_outcomes(json_data, tests):
+    assert len(tests) == 8
     assert tests['pass']['outcome'] == 'passed'
     assert tests['fail_with_fixture']['outcome'] == 'failed'
     assert tests['xfail']['outcome'] == 'xfailed'
@@ -125,3 +139,52 @@ def test_report_tests(json_data, tests_by_name):
     assert tests['fail_during_setup']['outcome'] == 'error'
     assert tests['fail_during_teardown']['outcome'] == 'error'
     assert tests['skip']['outcome'] == 'skipped'
+
+
+def test_report_longrepr(json_data, tests):
+    assert 'assert False' in tests['fail_with_fixture']['call']['longrepr']
+
+
+def test_report_crash_and_traceback(json_data, tests):
+    assert 'traceback' not in tests['pass']['call']
+    call = tests['fail_nested']['call']
+    assert call['crash'] == {
+        'path': 'test_report_crash_and_traceback.py',
+        'lineno': 49,
+        'info': 'TypeError: unsupported operand type(s) for -: \'int\' and '
+                '\'NoneType\''
+    }
+    assert call['traceback'] == [
+        {
+            'path': 'test_report_crash_and_traceback.py',
+            'lineno': 60,
+            'info': ''
+        },
+        {
+            'path': 'test_report_crash_and_traceback.py',
+            'lineno': 58,
+            'info': 'in foo'
+        },
+        {
+            'path': 'test_report_crash_and_traceback.py',
+            'lineno': 58,
+            'info': 'in <listcomp>'
+        },
+        {
+            'path': 'test_report_crash_and_traceback.py',
+            'lineno': 54,
+            'info': 'in bar'
+        },
+        {
+            'path': 'test_report_crash_and_traceback.py',
+            'lineno': 49,
+            'info': 'TypeError'
+        }
+    ]
+
+
+def test_no_traceback(misc_testdir):
+    misc_testdir.runpytest('--json-report', '--json-report-no-traceback')
+    with open(str(misc_testdir.tmpdir / '.report.json')) as f:
+        tests_ = tests(json.load(f))
+    assert 'traceback' not in tests_['fail_nested']['call']
