@@ -6,14 +6,17 @@ import pytest
 def misc_testdir(testdir):
     # Some test cases borrowed from github.com/mattcl/pytest-json
     testdir.makepyfile("""
+        import sys
         import pytest
 
 
         @pytest.fixture
         def setup_teardown_fixture(request):
-            print('setting up')
+            print('setup')
+            print('setuperr', file=sys.stderr)
             def fn():
-                print('tearing down')
+                print('teardown')
+                print('teardownerr', file=sys.stderr)
             request.addfinalizer(fn)
 
         @pytest.fixture
@@ -31,6 +34,8 @@ def misc_testdir(testdir):
             assert True
 
         def test_fail_with_fixture(setup_teardown_fixture):
+            print('call')
+            print('callerr', file=sys.stderr)
             assert False
 
         @pytest.mark.xfail(reason='testing xfail')
@@ -145,39 +150,39 @@ def test_report_longrepr(json_data, tests):
     assert 'assert False' in tests['fail_with_fixture']['call']['longrepr']
 
 
-def test_report_crash_and_traceback(json_data, tests):
+def test_report_crash_and_traceback(tests):
     assert 'traceback' not in tests['pass']['call']
     call = tests['fail_nested']['call']
     assert call['crash'] == {
         'path': 'test_report_crash_and_traceback.py',
-        'lineno': 49,
+        'lineno': 54,
         'info': 'TypeError: unsupported operand type(s) for -: \'int\' and '
                 '\'NoneType\''
     }
     assert call['traceback'] == [
         {
             'path': 'test_report_crash_and_traceback.py',
-            'lineno': 60,
+            'lineno': 65,
             'info': ''
         },
         {
             'path': 'test_report_crash_and_traceback.py',
-            'lineno': 58,
+            'lineno': 63,
             'info': 'in foo'
         },
         {
             'path': 'test_report_crash_and_traceback.py',
-            'lineno': 58,
+            'lineno': 63,
             'info': 'in <listcomp>'
         },
         {
             'path': 'test_report_crash_and_traceback.py',
-            'lineno': 54,
+            'lineno': 59,
             'info': 'in bar'
         },
         {
             'path': 'test_report_crash_and_traceback.py',
-            'lineno': 49,
+            'lineno': 54,
             'info': 'TypeError'
         }
     ]
@@ -188,3 +193,15 @@ def test_no_traceback(misc_testdir):
     with open(str(misc_testdir.tmpdir / '.report.json')) as f:
         tests_ = tests(json.load(f))
     assert 'traceback' not in tests_['fail_nested']['call']
+
+
+def test_streams(tests):
+    test = tests['fail_with_fixture']
+    assert test['setup']['stdout'] == 'setup\n'
+    assert test['setup']['stderr'] == 'setuperr\n'
+    assert test['call']['stdout'] == 'call\n'
+    assert test['call']['stderr'] == 'callerr\n'
+    assert test['teardown']['stdout'] == 'teardown\n'
+    assert test['teardown']['stderr'] == 'teardownerr\n'
+    assert 'stdout' not in tests['pass']['call']
+    assert 'stderr' not in tests['pass']['call']

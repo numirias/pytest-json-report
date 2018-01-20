@@ -15,6 +15,7 @@ class JSONReport:
         self.start_time = None
         self.report_size = 0
         self.reports = OrderedDict()
+        self.sections = {}
 
     @property
     def report_file(self):
@@ -59,6 +60,10 @@ class JSONReport:
         terminalreporter.write_line('report written to: %s (%d bytes)' %
                                     (self.report_file, self.report_size))
 
+    def pytest_runtest_makereport(self, item, call):
+        # We need the sections for stdout and stderr
+        self.sections[item.nodeid] = item._report_sections[:]
+
     def total_outcome(self, reports):
         """Return actual test outcome of the group of reports."""
         for report in reports:
@@ -91,11 +96,13 @@ class JSONReport:
         outcome = report.outcome
         crash_and_traceback = self.json_crash_and_traceback(report)
         longreprtext = report.longreprtext
+        streams = self.json_streams(report)
         return {
             'duration': duration,
             'outcome': outcome,
             'longrepr': longreprtext,
-            **crash_and_traceback
+            **streams,
+            **crash_and_traceback,
         }
 
     def json_crash_and_traceback(self, report):
@@ -121,6 +128,16 @@ class JSONReport:
             },
             **traceback
         }
+
+    def json_streams(self, report):
+        streams = {}
+        sections = self.sections[report.nodeid]
+        for when, key, content in sections:
+            if when != report.when:
+                continue
+            if key in ['stdout', 'stderr']:
+                streams[key] = content
+        return streams
 
 
 def pytest_addoption(parser):
