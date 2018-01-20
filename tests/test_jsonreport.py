@@ -135,6 +135,12 @@ def test_report_context(json_data):
                                             'pytest', 'platform', 'tests'])
 
 
+def test_report_item_keys(tests):
+    assert set(tests['pass'].keys()) == set([
+        'nodeid', 'path', 'lineno', 'domain', 'outcome', 'keywords', 'setup',
+        'call', 'teardown'])
+
+
 def test_report_outcomes(json_data, tests):
     assert len(tests) == 8
     assert tests['pass']['outcome'] == 'passed'
@@ -195,7 +201,7 @@ def test_no_traceback(misc_testdir):
     assert 'traceback' not in tests_['fail_nested']['call']
 
 
-def test_streams(tests):
+def test_report_streams(tests):
     test = tests['fail_with_fixture']
     assert test['setup']['stdout'] == 'setup\n'
     assert test['setup']['stderr'] == 'setuperr\n'
