@@ -16,9 +16,9 @@ pip install pytest-json-report --upgrade
 Usage example:
 
 ```
-$ pytest -v --json-report --json-report-file my_report.json tests/
+$ pytest -v --json-report --json-report-file my_report.json
 $ cat my_report.json
-{"created": "2018-01-19T20:58:06.296891+02:00", ... "tests":[{"nodeid": "test_foo.py", "outcome": "passed", ...}, {...}, ...]}
+{"created": "2018-01-19T20:58:06.296891+02:00", ... "tests":[{"nodeid": "test_foo.py", "outcome": "passed", ...}, ...]}
 ```
 By default, the report is saved in `.report.json`. Available settings:
 
@@ -28,7 +28,13 @@ $ pytest -h
 reporting test results as JSON:
   --json-report         create JSON report
   --json-report-file=JSON_REPORT_FILE
-                        target file to save JSON report
+                        target path to save JSON report
+  --json-report-no-traceback
+                        don't include tracebacks in JSON report
+  --json-report-no-streams
+                        don't include stdin/sterr output in JSON report
+  --json-report-summary
+                        just create a summary without per-test details
 ...
 [pytest] ini-options in the first pytest.ini|tox.ini|setup.cfg file found:
   json_report_file (string) target file to save JSON report
@@ -46,11 +52,20 @@ The JSON report contains metadata of the session and an array of test result obj
     "python": "3.6.3",
     "pytest": "3.3.2",
     "platform": "Linux-1.23.5-1-ARCH-x86_64-with-arch",
+    "summary": {
+        "passed": 1,
+        "failed": 2,
+        "xfailed": 1,
+        "xpassed": 1,
+        "error": 2,
+        "skipped": 1,
+        "total": 8
+    },
     "tests": [
         {
             "nodeid": "test_foo.py::test_bar",
             "path": "test_foo.py",
-            "line": 18,
+            "lineno": 18,
             "domain": "test_bar",
             "outcome": "failed",
             "keywords": {
@@ -60,17 +75,49 @@ The JSON report contains metadata of the session and an array of test result obj
             "setup": {
                 "duration": 0.00031757354736328125,
                 "outcome": "passed",
-                "longrepr": null
             },
             "call": {
                 "duration": 0.0002713203430175781,
                 "outcome": "failed",
-                "longrepr": "bad_value = None\n ..."
+                "longrepr": "def bar():\n ..."
+                "stdout": "foo\nbar\n",
+                "stderr": "baz\n",
+                "crash": {
+                    "path": "test_foo.py.py",
+                    "lineno": 54,
+                    "info": "TypeError: 'int' object is not subscriptable"
+                },
+                "traceback": [
+                    {
+                        "path": "test_foo.py",
+                        "lineno": 65,
+                        "info": ""
+                    },
+                    {
+                        "path": "test_foo.py",
+                        "lineno": 63,
+                        "info": "in foo"
+                    },
+                    {
+                        "path": "test_foo.py",
+                        "lineno": 63,
+                        "info": "in <listcomp>"
+                    },
+                    {
+                        "path": "test_foo.py",
+                        "lineno": 59,
+                        "info": "in bar"
+                    },
+                    {
+                        "path": "test_foo.py",
+                        "lineno": 54,
+                        "info": "TypeError"
+                    }
+                ]
             },
             "teardown": {
                 "duration": 0.00019168853759765625,
                 "outcome": "passed",
-                "longrepr": null
             }
         },
         ...
@@ -78,7 +125,7 @@ The JSON report contains metadata of the session and an array of test result obj
 }
 
 ```
-See the pytest documentation on [`_pytest.runner.TestReport`](https://docs.pytest.org/en/latest/writing_plugins.html#_pytest.runner.TestReport) for details on what the keys of the test result objects mean. Note that `(path, line, domain)` is the `TestReport.location` tuple.
+See the pytest documentation on [`_pytest.runner.TestReport`](https://docs.pytest.org/en/latest/writing_plugins.html#_pytest.runner.TestReport) for details on what the keys of the test result objects mean. Note that `(path, lineno, domain)` is the `TestReport.location` tuple.
 
 
 ## Similar tools

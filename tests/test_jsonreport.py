@@ -76,11 +76,18 @@ def misc_testdir(testdir):
 
 
 @pytest.fixture
-def json_data(misc_testdir):
+def load_report(misc_testdir):
+    def func(path='.report.json'):
+        with open(str(misc_testdir.tmpdir / path)) as f:
+            data = json.load(f)
+        return data
+    return func
+
+
+@pytest.fixture
+def json_data(misc_testdir, load_report):
     misc_testdir.runpytest('-vv', '--json-report')
-    with open(str(misc_testdir.tmpdir / '.report.json')) as f:
-        data = json.load(f)
-    return data
+    return load_report()
 
 
 @pytest.fixture
@@ -117,7 +124,7 @@ def test_create_report_file_from_ini(misc_testdir):
         [pytest]
         json_report_file = ini.json
     """)
-    misc_testdir.runpytest()
+    misc_testdir.runpytest('--json-report')
     assert (misc_testdir.tmpdir / 'ini.json').exists()
 
 
@@ -206,17 +213,22 @@ def test_report_crash_and_traceback(tests):
     ]
 
 
-def test_no_traceback(misc_testdir):
+def test_no_traceback(misc_testdir, load_report):
     misc_testdir.runpytest('--json-report', '--json-report-no-traceback')
-    with open(str(misc_testdir.tmpdir / '.report.json')) as f:
-        tests_ = tests(json.load(f))
+    tests_ = tests(load_report())
     assert 'traceback' not in tests_['fail_nested']['call']
 
 
-def test_summary_only(misc_testdir):
+def test_no_streams(misc_testdir, load_report):
+    misc_testdir.runpytest('--json-report', '--json-report-no-streams')
+    call = tests(load_report())['fail_with_fixture']['call']
+    assert 'stdout' not in call
+    assert 'stderr' not in call
+
+
+def test_summary_only(misc_testdir, load_report):
     misc_testdir.runpytest('--json-report', '--json-report-summary')
-    with open(str(misc_testdir.tmpdir / '.report.json')) as f:
-        data = json.load(f)
+    data = load_report()
     assert 'summary' in data
     assert 'tests' not in data
 

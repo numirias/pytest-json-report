@@ -28,6 +28,10 @@ class JSONReport:
         return not self.config.option.json_report_no_traceback
 
     @property
+    def show_streams(self):
+        return not self.config.option.json_report_no_streams
+
+    @property
     def show_test_details(self):
         return not self.config.option.json_report_summary
 
@@ -101,17 +105,15 @@ class JSONReport:
 
     def json_stage(self, report):
         """Return JSON-serializable object for the stage info of a report."""
-        duration = report.duration
-        outcome = report.outcome
-        crash_and_traceback = self.json_crash_and_traceback(report)
-        longreprtext = report.longreprtext
-        streams = self.json_streams(report)
+        json_longrepr = {
+            'longrepr': report.longreprtext,
+        } if report.longreprtext else {}
         return {
-            'duration': duration,
-            'outcome': outcome,
-            'longrepr': longreprtext,
-            **streams,
-            **crash_and_traceback,
+            'duration': report.duration,
+            'outcome': report.outcome,
+            **json_longrepr,
+            **self.json_streams(report),
+            **self.json_crash_and_traceback(report),
         }
 
     def json_crash_and_traceback(self, report):
@@ -140,6 +142,8 @@ class JSONReport:
 
     def json_streams(self, report):
         """Return JSON-serializable object for the standard stream outputs."""
+        if not self.show_streams:
+            return {}
         streams = {}
         sections = self.sections[report.nodeid]
         for when, key, content in sections:
@@ -158,21 +162,24 @@ class JSONReport:
 
 def pytest_addoption(parser):
     file_help_text = 'target path to save JSON report'
-    traceback_help_text = 'don\'t include tracebacks in the JSON report'
+    no_traceback_help_text = 'don\'t include tracebacks in JSON report'
+    no_stream_help_text = 'don\'t include stdin/sterr output in JSON report'
     summary_help_text = 'just create a summary without per-test details'
     group = parser.getgroup('jsonreport', 'reporting test results as JSON')
     group.addoption('--json-report', default=False, action='store_true',
-                    help='enable JSON report')
+                    help='create JSON report')
     group.addoption('--json-report-file', help=file_help_text)
     group.addoption('--json-report-no-traceback', default=False,
-                    action='store_true', help=traceback_help_text)
+                    action='store_true', help=no_traceback_help_text)
+    group.addoption('--json-report-no-streams', default=False,
+                    action='store_true', help=no_stream_help_text)
     group.addoption('--json-report-summary', default=False,
                     action='store_true', help=summary_help_text)
     parser.addini('json_report_file', file_help_text)
 
 
 def pytest_configure(config):
-    if not (config.option.json_report or config.getini('json_report_file')):
+    if not config.option.json_report:
         return
     plugin = JSONReport(config)
     config._json_report = plugin
