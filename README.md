@@ -4,7 +4,9 @@
 [![PyPI Version](https://img.shields.io/pypi/v/pytest-json-report.svg)](https://pypi.python.org/pypi/pytest-json-report)
 [![Python Versions](https://img.shields.io/pypi/pyversions/pytest-json-report.svg)](https://pypi.python.org/pypi/pytest-json-report)
 
-This pytest plugin saves test reports to JSON files so that the results can be processed by other applications.
+This pytest plugin saves test reports to JSON files, so that the results can be processed by other applications.
+
+You can have a large report including captured output and exception tracebacks, or just a summary, as you wish.
 
 ## Installation
 
@@ -13,14 +15,14 @@ pip install pytest-json-report --upgrade
 ```
 ## Usage
 
-Usage example:
+Just run pytest with `--json-report`. (The report is saved in `.report.json` by default.)
 
 ```
-$ pytest -v --json-report --json-report-file my_report.json
-$ cat my_report.json
+$ pytest -v --json-report
+$ cat .report.json
 {"created": "2018-01-19T20:58:06.296891+02:00", ... "tests":[{"nodeid": "test_foo.py", "outcome": "passed", ...}, ...]}
 ```
-By default, the report is saved in `.report.json`. Available settings:
+Available switches:
 
 ```
 $ pytest -h
@@ -40,10 +42,11 @@ reporting test results as JSON:
   json_report_file (string) target file to save JSON report
 ...
 ```
+If your report files are getting uncomfortably large, try `--json-report-no-streams` or `--json-report-summary`.
 
 ## Format
 
-The JSON report contains metadata of the session and an array of test result objects:
+The JSON report contains metadata of the session, a summary and an array of test result objects:
 
 ```python
 {
@@ -125,8 +128,9 @@ The JSON report contains metadata of the session and an array of test result obj
 }
 
 ```
-See the pytest documentation on [`_pytest.runner.TestReport`](https://docs.pytest.org/en/latest/writing_plugins.html#_pytest.runner.TestReport) for details on what the keys of the test result objects mean. Note that `(path, lineno, domain)` is the `TestReport.location` tuple.
+See the pytest docs on [`_pytest.runner.TestReport`](https://docs.pytest.org/en/latest/writing_plugins.html#_pytest.runner.TestReport) for details on what the keys of the test result objects mean. Note that `(path, lineno, domain)` is the `TestReport.location` tuple.
 
+Also be aware that output and exceptions don't always occur in the `call` stage. That is, if you want to check where a test failed or collect all stdout output, you should check`setup` and `teardown`, too.
 
 ## Similar tools
 
