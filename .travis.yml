@@ -2,9 +2,11 @@ language: python
 python:
   - "3.5"
   - "3.6"
+jobs:
+  include:
+  - python: 3.6
+    env: TOXENV=lint
 install:
-  - make
-  - pipenv install tox-travis
+  - pip install tox-travis
 script:
-  - make test
-  - make lint
+  - tox

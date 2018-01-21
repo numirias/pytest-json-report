@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name='pytest-json-report',
-    description='A pytest plugin to report test results to JSON files',
+    description='A pytest plugin to report test results as JSON files',
     packages=['pytest_jsonreport'],
     author='numirias',
     author_email='numirias@users.noreply.github.com',
