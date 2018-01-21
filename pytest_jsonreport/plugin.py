@@ -163,7 +163,7 @@ class JSONReport:
 def pytest_addoption(parser):
     file_help_text = 'target path to save JSON report'
     no_traceback_help_text = 'don\'t include tracebacks in JSON report'
-    no_stream_help_text = 'don\'t include stdin/sterr output in JSON report'
+    no_stream_help_text = 'don\'t include stdout/stderr output in JSON report'
     summary_help_text = 'just create a summary without per-test details'
     group = parser.getgroup('jsonreport', 'reporting test results as JSON')
     group.addoption('--json-report', default=False, action='store_true',

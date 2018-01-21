@@ -32,7 +32,7 @@ reporting test results as JSON:
   --json-report-no-traceback
                         don't include tracebacks in JSON report
   --json-report-no-streams
-                        don't include stdin/sterr output in JSON report
+                        don't include stdout/stderr output in JSON report
   --json-report-summary
                         just create a summary without per-test details
 ...
