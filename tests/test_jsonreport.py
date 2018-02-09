@@ -95,6 +95,17 @@ def tests(json_data):
     return {test['domain'][5:]: test for test in json_data['tests']}
 
 
+@pytest.fixture
+def make_json(testdir):
+    def func(content, args=['--json-report'], path='.report.json'):
+        testdir.makepyfile(content)
+        testdir.runpytest(*args)
+        with open(str(testdir.tmpdir / path)) as f:
+            data = json.load(f)
+        return data
+    return func
+
+
 def test_arguments_in_help(misc_testdir):
     res = misc_testdir.runpytest('--help')
     res.stdout.fnmatch_lines([
@@ -243,3 +254,31 @@ def test_report_streams(tests):
     assert test['teardown']['stderr'] == 'teardownerr\n'
     assert 'stdout' not in tests['pass']['call']
     assert 'stderr' not in tests['pass']['call']
+
+
+def test_metadata(make_json):
+    data = make_json("""
+        def test_metadata1(json_metadata):
+            json_metadata['x'] = 'foo'
+            json_metadata['y'] = [1, {'a': 2}]
+
+        def test_metadata2(json_metadata):
+            json_metadata['z'] = 1
+            assert False
+
+        def test_unused_metadata(json_metadata):
+            assert True
+
+        def test_empty_metadata(json_metadata):
+            json_metadata.update({})
+
+        def test_unserializable_metadata(json_metadata):
+            json_metadata['a'] = object()
+
+    """)
+    tests_ = tests(data)
+    assert tests_['metadata1']['metadata'] == {'x': 'foo', 'y': [1, {'a': 2}]}
+    assert tests_['metadata2']['metadata'] == {'z': 1}
+    assert 'metadata' not in tests_['unused_metadata']
+    assert 'metadata' not in tests_['empty_metadata']
+    assert tests_['unserializable_metadata']['metadata'].startswith('{\'a\':')

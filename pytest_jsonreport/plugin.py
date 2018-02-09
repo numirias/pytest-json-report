@@ -14,8 +14,7 @@ class JSONReport:
         self.config = config
         self.start_time = None
         self.report_size = 0
-        self.reports = OrderedDict()
-        self.sections = {}
+        self.tests = OrderedDict()
 
     @property
     def report_file(self):
@@ -38,29 +37,64 @@ class JSONReport:
     def pytest_sessionstart(self, session):
         self.start_time = time.time()
 
-    def pytest_runtest_logreport(self, report):
-        if report.nodeid in self.reports:
-            self.reports[report.nodeid].append(report)
-        else:
-            self.reports[report.nodeid] = [report]
+    @pytest.hookimpl(hookwrapper=True)
+    def pytest_runtest_makereport(self, item, call):
+        outcome = yield
+        report = outcome.get_result()
+        try:
+            test = self.tests[item]
+        except KeyError:
+            test = self.json_test(item)
+            self.tests[item] = test
+        # Update total test outcome if necessary
+        outcome = self.config.hook.pytest_report_teststatus(report=report)[0]
+        if outcome not in ['passed', '']:
+            test['outcome'] = outcome
+        stage = {
+            'duration': report.duration,
+            'outcome': report.outcome,
+            **self.json_crash_and_traceback(report),
+        }
+        if report.longreprtext:
+            stage['longrepr'] = report.longreprtext
+        stage.update(self.streams(item, report.when))
+        test[call.when] = stage
+
+    def streams(self, item, when):
+        if not self.show_streams:
+            return {}
+        return {key: val for when_, key, val in item._report_sections if
+                when_ == when and key in ['stdout', 'stderr']}
 
     def pytest_sessionfinish(self, session):
-        duration = time.time() - self.start_time
-        reports = self.reports.values()
-        json_tests = {
-            'tests': list(map(self.json_test_result, reports))
-        } if self.show_test_details else {}
-        json_summary = self.json_summary(reports)
+        self.add_metadata()
         json_report = {
             'created': datetime.now(timezone.utc).astimezone().isoformat(),
-            'duration': duration,
+            # TODO
+            'duration': time.time() - self.start_time,
             'python': platform.python_version(),
             'pytest': pytest.__version__,
             'platform': platform.platform(),
-            'summary': json_summary,
-            **json_tests,
+            'summary': self.json_summary(),
         }
+        if self.show_test_details:
+            json_report['tests'] = list(self.tests.values())
         self.save_report(json_report)
+
+    def add_metadata(self):
+        for item, test in self.tests.items():
+            try:
+                metadata = item._json_metadata
+            except AttributeError:
+                continue
+            if metadata == {}:
+                continue
+            try:
+                json.dumps(metadata)
+            except TypeError:
+                # Metadata isn't JSON-serializable, so make it a str
+                metadata = str(metadata)
+            test['metadata'] = metadata
 
     def save_report(self, json_report):
         """Save the test report to JSON file."""
@@ -73,47 +107,25 @@ class JSONReport:
         terminalreporter.write_line('report written to: %s (%d bytes)' %
                                     (self.report_file, self.report_size))
 
-    def pytest_runtest_makereport(self, item, call):
-        # We need the sections for stdout and stderr
-        self.sections[item.nodeid] = item._report_sections[:]
-
-    def total_outcome(self, reports):
+    def total_outcome(self, report_group):
         """Return actual test outcome of the group of reports."""
-        for report in reports:
+        for report in report_group.values():
             cat = self.config.hook.pytest_report_teststatus(report=report)[0]
             if cat not in ['passed', '']:
                 return cat
         return 'passed'
 
-    def json_test_result(self, reports):
+    def json_test(self, item):
         """Return JSON-serializable object for a list of test reports."""
-        any_report = reports[0]
-        nodeid = any_report.nodeid
-        path, line, domain = any_report.location
-        keywords = any_report.keywords
-        outcome = self.total_outcome(reports)
-        stages = {r.when: self.json_stage(r) for r in reports}
+        path, line, domain = item.location
+        keywords = dict([(x, 1) for x in item.keywords])  # TODO
         return {
-            'nodeid': nodeid,
+            'nodeid': item.nodeid,
             'path': path,
             'lineno': line,
             'domain': domain,
-            'outcome': outcome,
             'keywords': keywords,
-            **stages
-        }
-
-    def json_stage(self, report):
-        """Return JSON-serializable object for the stage info of a report."""
-        json_longrepr = {
-            'longrepr': report.longreprtext,
-        } if report.longreprtext else {}
-        return {
-            'duration': report.duration,
-            'outcome': report.outcome,
-            **json_longrepr,
-            **self.json_streams(report),
-            **self.json_crash_and_traceback(report),
+            'outcome': 'passed',  # Will be overridden in case of failure
         }
 
     def json_crash_and_traceback(self, report):
@@ -123,41 +135,37 @@ class JSONReport:
             crash = report.longrepr.reprcrash
         except AttributeError:
             return {}
-        traceback = {
-            'traceback': [{
-                'path': entry.reprfileloc.path,
-                'lineno': entry.reprfileloc.lineno,
-                'info': entry.reprfileloc.message,
-            } for entry in tb.reprentries]
-        } if self.show_traceback else {}
-        return {
+        data = {
             'crash': {
                 # We don't use crash.path because we want the shorthand
                 'path': tb.reprentries[-1].reprfileloc.path,
                 'lineno': crash.lineno,
                 'info': crash.message,
             },
-            **traceback
         }
+        if self.show_traceback:
+            data['traceback'] = [{
+                'path': entry.reprfileloc.path,
+                'lineno': entry.reprfileloc.lineno,
+                'info': entry.reprfileloc.message,
+            } for entry in tb.reprentries]
+        return data
 
-    def json_streams(self, report):
-        """Return JSON-serializable object for the standard stream outputs."""
-        if not self.show_streams:
-            return {}
-        streams = {}
-        sections = self.sections[report.nodeid]
-        for when, key, content in sections:
-            if when != report.when:
-                continue
-            if key in ['stdout', 'stderr']:
-                streams[key] = content
-        return streams
-
-    def json_summary(self, reports):
+    def json_summary(self):
         """Return JSON-serializable object summarizing the test results."""
-        summary = Counter([self.total_outcome(r) for r in reports])
+        summary = Counter([t['outcome'] for t in self.tests.values()])
         summary['total'] = sum(summary.values())
         return summary
+
+    @pytest.fixture
+    def json_metadata(self, request):
+        try:
+            return request.node._json_metadata
+        except AttributeError:
+            pass
+        metadata = {}
+        request.node._json_metadata = metadata
+        return metadata
 
 
 def pytest_addoption(parser):
