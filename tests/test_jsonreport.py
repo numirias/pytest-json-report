@@ -282,3 +282,16 @@ def test_metadata(make_json):
     assert 'metadata' not in tests_['unused_metadata']
     assert 'metadata' not in tests_['empty_metadata']
     assert tests_['unserializable_metadata']['metadata'].startswith('{\'a\':')
+
+def test_global_metadata(testdir, make_json):
+    testdir.makeconftest("""
+        def pytest_json_modifyreport(json_report):
+            json_report['something'] = 'foo'
+            del json_report['summary']
+    """)
+    data = make_json("""
+        def test_foo():
+            assert False
+    """)
+    assert data['something'] == 'foo'
+    assert 'summary' not in data
