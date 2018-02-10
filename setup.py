@@ -10,7 +10,10 @@ setup(
     version='0.4.1',
     url='https://github.com/numirias/pytest-json-report',
     license='MIT',
-    install_requires=['pytest>=3.3.2'],
+    install_requires=[
+        'pytest>=3.3.2',
+        'pytest-metadata',
+    ],
     entry_points={
         'pytest11': [
             'pytest_jsonreport = pytest_jsonreport.plugin',

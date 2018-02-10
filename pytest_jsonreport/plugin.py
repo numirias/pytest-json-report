@@ -1,6 +1,5 @@
 from collections import Counter, OrderedDict
 import json
-import platform
 import time
 
 import pytest
@@ -73,9 +72,7 @@ class JSONReport:
         json_report = {
             'created': time.time(),
             'duration': time.time() - self.start_time,
-            'python': platform.python_version(),
-            'pytest': pytest.__version__,
-            'platform': platform.platform(),
+            'environment': getattr(self.config, '_metadata', {}),
             'summary': self.json_summary(),
         }
         if self.show_test_details:
@@ -120,13 +117,12 @@ class JSONReport:
     def json_test(self, item):
         """Return JSON-serializable object for a list of test reports."""
         path, line, domain = item.location
-        keywords = dict([(x, 1) for x in item.keywords])  # TODO
         return {
             'nodeid': item.nodeid,
             'path': path,
             'lineno': line,
             'domain': domain,
-            'keywords': keywords,
+            'keywords': list(item.keywords),
             'outcome': 'passed',  # Will be overridden in case of failure
         }
 
@@ -162,18 +158,17 @@ class JSONReport:
     @pytest.fixture
     def json_metadata(self, request):
         try:
-            return request.node._json_metadata
+            metadata = request.node._json_metadata
         except AttributeError:
-            pass
-        metadata = {}
-        request.node._json_metadata = metadata
+            metadata = {}
+            request.node._json_metadata = metadata
         return metadata
 
 
 class Hooks:
 
     def pytest_json_modifyreport(self, json_report):
-        pass
+        """Called after building JSON report and before saving it."""
 
 
 def pytest_addoption(parser):
