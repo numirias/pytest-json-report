@@ -149,8 +149,8 @@ def test_create_report_file_priority(misc_testdir):
 
 
 def test_report_context(json_data):
-    assert set(json_data) == set(['created', 'duration', 'python', 'pytest',
-                                  'platform', 'tests', 'summary'])
+    assert set(json_data) == set(['created', 'duration', 'environment',
+                                  'tests', 'summary'])
 
 
 def test_report_item_keys(tests):
@@ -256,7 +256,7 @@ def test_report_streams(tests):
     assert 'stderr' not in tests['pass']['call']
 
 
-def test_metadata(make_json):
+def test_json_metadata(make_json):
     data = make_json("""
         def test_metadata1(json_metadata):
             json_metadata['x'] = 'foo'
@@ -284,7 +284,13 @@ def test_metadata(make_json):
     assert tests_['unserializable_metadata']['metadata'].startswith('{\'a\':')
 
 
-def test_global_metadata(testdir, make_json):
+def test_enviroment_via_metadata_plugin(make_json):
+    data = make_json('', ['--json-report', '--metadata', 'x', 'y'])
+    assert 'Python' in data['environment']
+    assert data['environment']['x'] == 'y'
+
+
+def test_modifyreport_hook(testdir, make_json):
     testdir.makeconftest("""
         def pytest_json_modifyreport(json_report):
             json_report['foo'] = 'bar'
