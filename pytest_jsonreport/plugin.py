@@ -6,7 +6,7 @@ import pytest
 
 
 class JSONReport:
-    """The pytest JSON report plugin."""
+    """The JSON report pytest plugin."""
 
     def __init__(self, config):
         self.config = config
@@ -33,11 +33,11 @@ class JSONReport:
     def show_test_details(self):
         return not self.config.option.json_report_summary
 
-    def pytest_sessionstart(self, session):
-        self.start_time = time.time()
-
     def pytest_addhooks(self, pluginmanager):
         pluginmanager.add_hookspecs(Hooks)
+
+    def pytest_sessionstart(self, session):
+        self.start_time = time.time()
 
     @pytest.hookimpl(hookwrapper=True)
     def pytest_runtest_makereport(self, item, call):
@@ -48,25 +48,12 @@ class JSONReport:
         except KeyError:
             test = self.json_test(item)
             self.tests[item] = test
-        # Update total test outcome if necessary
+        # Update total test outcome, if necessary. The total outcome can be
+        # different from the outcome of the setup/call/teardown stage.
         outcome = self.config.hook.pytest_report_teststatus(report=report)[0]
         if outcome not in ['passed', '']:
             test['outcome'] = outcome
-        stage = {
-            'duration': report.duration,
-            'outcome': report.outcome,
-            **self.json_crash_and_traceback(report),
-        }
-        if report.longreprtext:
-            stage['longrepr'] = report.longreprtext
-        stage.update(self.streams(item, report.when))
-        test[call.when] = stage
-
-    def streams(self, item, when):
-        if not self.show_streams:
-            return {}
-        return {key: val for when_, key, val in item._report_sections if
-                when_ == when and key in ['stdout', 'stderr']}
+        test[call.when] = self.json_stage(item, report)
 
     def pytest_sessionfinish(self, session):
         self.add_metadata()
@@ -81,7 +68,14 @@ class JSONReport:
         self.config.hook.pytest_json_modifyreport(json_report=json_report)
         self.save_report(json_report)
 
+    def pytest_terminal_summary(self, terminalreporter):
+        print(terminalreporter.stats)
+        terminalreporter.write_sep('-', 'JSON report')
+        terminalreporter.write_line('report written to: %s (%d bytes)' %
+                                    (self.report_file, self.report_size))
+
     def add_metadata(self):
+        """Add metadata from test items to the report."""
         for item, test in self.tests.items():
             try:
                 metadata = item._json_metadata
@@ -97,26 +91,13 @@ class JSONReport:
             test['metadata'] = metadata
 
     def save_report(self, json_report):
-        """Save the test report to JSON file."""
+        """Save the JSON report to file."""
         with open(self.report_file, 'w') as f:
             json.dump(json_report, f)
             self.report_size = f.tell()
 
-    def pytest_terminal_summary(self, terminalreporter):
-        terminalreporter.write_sep('-', 'JSON report')
-        terminalreporter.write_line('report written to: %s (%d bytes)' %
-                                    (self.report_file, self.report_size))
-
-    def total_outcome(self, report_group):
-        """Return actual test outcome of the group of reports."""
-        for report in report_group.values():
-            cat = self.config.hook.pytest_report_teststatus(report=report)[0]
-            if cat not in ['passed', '']:
-                return cat
-        return 'passed'
-
     def json_test(self, item):
-        """Return JSON-serializable object for a list of test reports."""
+        """Return JSON-serializable object for a test item."""
         path, line, domain = item.location
         return {
             'nodeid': item.nodeid,
@@ -127,27 +108,55 @@ class JSONReport:
             'outcome': 'passed',  # Will be overridden in case of failure
         }
 
-    def json_crash_and_traceback(self, report):
-        """Return JSON-serializable object for the crash and traceback."""
+    def json_stage(self, item, report):
+        """Return JSON-serializable test stage (setup/call/teardown)."""
+        stage = {
+            'duration': report.duration,
+            'outcome': report.outcome,
+            **self.json_crash(report),
+            **self.json_traceback(report),
+            **self.json_streams(item, report.when),
+        }
+        if report.longreprtext:
+            stage['longrepr'] = report.longreprtext
+        return stage
+
+    def json_streams(self, item, when):
+        """Return JSON-serializable object for the standard stream output."""
+        if not self.show_streams:
+            return {}
+        return {key: val for when_, key, val in item._report_sections if
+                when_ == when and key in ['stdout', 'stderr']}
+
+    def json_crash(self, report):
+        """Return JSON-serializable object for the crash."""
         try:
-            tb = report.longrepr.reprtraceback
             crash = report.longrepr.reprcrash
         except AttributeError:
             return {}
-        data = {
+        return {
             'crash': {
                 'path': crash.path,
                 'lineno': crash.lineno,
                 'info': crash.message,
             },
         }
-        if self.show_traceback:
-            data['traceback'] = [{
+
+    def json_traceback(self, report):
+        """Return JSON-serializable object for the traceback."""
+        try:
+            tb = report.longrepr.reprtraceback
+        except AttributeError:
+            return {}
+        if not self.show_traceback:
+            return {}
+        return {
+            'traceback': [{
                 'path': entry.reprfileloc.path,
                 'lineno': entry.reprfileloc.lineno,
                 'info': entry.reprfileloc.message,
-            } for entry in tb.reprentries]
-        return data
+            } for entry in tb.reprentries],
+        }
 
     def json_summary(self):
         """Return JSON-serializable object summarizing the test results."""
@@ -157,6 +166,7 @@ class JSONReport:
 
     @pytest.fixture
     def json_metadata(self, request):
+        """Fixture to add metadata to the current test item."""
         try:
             metadata = request.node._json_metadata
         except AttributeError:
@@ -168,7 +178,10 @@ class JSONReport:
 class Hooks:
 
     def pytest_json_modifyreport(self, json_report):
-        """Called after building JSON report and before saving it."""
+        """Called after building JSON report and before saving it.
+
+        Plugins can use this hook to modify the report before it's saved.
+        """
 
 
 def pytest_addoption(parser):
