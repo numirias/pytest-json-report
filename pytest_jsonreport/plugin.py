@@ -1,5 +1,4 @@
 from collections import Counter, OrderedDict
-from datetime import datetime, timezone
 import json
 import platform
 import time
@@ -72,8 +71,7 @@ class JSONReport:
     def pytest_sessionfinish(self, session):
         self.add_metadata()
         json_report = {
-            'created': datetime.now(timezone.utc).astimezone().isoformat(),
-            # TODO
+            'created': time.time(),
             'duration': time.time() - self.start_time,
             'python': platform.python_version(),
             'pytest': pytest.__version__,
