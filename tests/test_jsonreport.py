@@ -2,92 +2,85 @@ import json
 import pytest
 
 
+# Some test cases borrowed from github.com/mattcl/pytest-json
+FILE = """
+import sys
+import pytest
+
+
+@pytest.fixture
+def setup_teardown_fixture(request):
+    print('setup')
+    print('setuperr', file=sys.stderr)
+    def fn():
+        print('teardown')
+        print('teardownerr', file=sys.stderr)
+    request.addfinalizer(fn)
+
+@pytest.fixture
+def fail_setup_fixture(request):
+    assert False
+
+@pytest.fixture
+def fail_teardown_fixture(request):
+    def fn():
+        assert False
+    request.addfinalizer(fn)
+
+
+def test_pass():
+    assert True
+
+def test_fail_with_fixture(setup_teardown_fixture):
+    print('call')
+    print('callerr', file=sys.stderr)
+    assert False
+
+@pytest.mark.xfail(reason='testing xfail')
+def test_xfail():
+    assert False
+
+@pytest.mark.xfail(reason='testing xfail')
+def test_xfail_but_passing():
+    assert True
+
+def test_fail_during_setup(fail_setup_fixture):
+    assert True
+
+def test_fail_during_teardown(fail_teardown_fixture):
+    assert True
+
+@pytest.mark.skipif(True, reason='testing skip')
+def test_skip():
+    assert False
+
+def test_fail_nested():
+    def baz(o=1):
+        c = 3
+        return 2 - c - None
+    def bar(m, n=5):
+        b = 2
+        print(m)
+        print('bar')
+        return baz()
+    def foo():
+        a = 1
+        print('foo')
+        v = [bar(x) for x in range(3)]
+        return v
+    foo()
+"""
+
+
 @pytest.fixture
 def misc_testdir(testdir):
-    # Some test cases borrowed from github.com/mattcl/pytest-json
-    testdir.makepyfile("""
-        import sys
-        import pytest
-
-
-        @pytest.fixture
-        def setup_teardown_fixture(request):
-            print('setup')
-            print('setuperr', file=sys.stderr)
-            def fn():
-                print('teardown')
-                print('teardownerr', file=sys.stderr)
-            request.addfinalizer(fn)
-
-        @pytest.fixture
-        def fail_setup_fixture(request):
-            assert False
-
-        @pytest.fixture
-        def fail_teardown_fixture(request):
-            def fn():
-                assert False
-            request.addfinalizer(fn)
-
-
-        def test_pass():
-            assert True
-
-        def test_fail_with_fixture(setup_teardown_fixture):
-            print('call')
-            print('callerr', file=sys.stderr)
-            assert False
-
-        @pytest.mark.xfail(reason='testing xfail')
-        def test_xfail():
-            assert False
-
-        @pytest.mark.xfail(reason='testing xfail')
-        def test_xfail_but_passing():
-            assert True
-
-        def test_fail_during_setup(fail_setup_fixture):
-            assert True
-
-        def test_fail_during_teardown(fail_teardown_fixture):
-            assert True
-
-        @pytest.mark.skipif(True, reason='testing skip')
-        def test_skip():
-            assert False
-
-        def test_fail_nested():
-            def baz(o=1):
-                c = 3
-                return 2 - c - None
-            def bar(m, n=5):
-                b = 2
-                print(m)
-                print('bar')
-                return baz()
-            def foo():
-                a = 1
-                print('foo')
-                v = [bar(x) for x in range(3)]
-                return v
-            foo()
-    """)
+    testdir.makepyfile(FILE)
     return testdir
 
 
 @pytest.fixture
-def load_report(misc_testdir):
-    def func(path='.report.json'):
-        with open(str(misc_testdir.tmpdir / path)) as f:
-            data = json.load(f)
-        return data
-    return func
-
-
-@pytest.fixture
-def json_data(misc_testdir, load_report):
-    misc_testdir.runpytest('-vv', '--json-report')
-    return load_report()
+def json_data(make_json):
+    return make_json()
 
 
 @pytest.fixture
@@ -97,7 +90,7 @@ def tests(json_data):
 
 @pytest.fixture
 def make_json(testdir):
-    def func(content, args=['--json-report'], path='.report.json'):
+    def func(content=FILE, args=['-vv', '--json-report'], path='.report.json'):
         testdir.makepyfile(content)
         testdir.runpytest(*args)
         with open(str(testdir.tmpdir / path)) as f:
@@ -142,14 +135,14 @@ def test_create_report_file_from_ini(misc_testdir):
 def test_create_report_file_priority(misc_testdir):
     misc_testdir.makeini("""
         [pytest]
-        json_report_file = ini2.json
+        json_report_file = ini.json
     """)
-    misc_testdir.runpytest('--json-report', '--json-report-file=arg2.json')
-    assert (misc_testdir.tmpdir / 'arg2.json').exists()
+    misc_testdir.runpytest('--json-report', '--json-report-file=arg.json')
+    assert (misc_testdir.tmpdir / 'arg.json').exists()
 
 
-def test_report_context(json_data):
-    assert set(json_data) == set(['created', 'duration', 'environment',
+def test_report_context(make_json):
+    assert set(make_json()) == set(['created', 'duration', 'environment',
                                   'tests', 'summary'])
 
 
@@ -170,8 +163,8 @@ def test_report_outcomes(tests):
     assert tests['skip']['outcome'] == 'skipped'
 
 
-def test_report_summary(json_data):
-    assert json_data['summary'] == {
+def test_report_summary(make_json):
+    assert make_json()['summary'] == {
         'total': 8,
         'passed': 1,
         'failed': 2,
@@ -182,7 +175,7 @@ def test_report_summary(json_data):
     }
 
 
-def test_report_longrepr(json_data, tests):
+def test_report_longrepr(tests):
     assert 'assert False' in tests['fail_with_fixture']['call']['longrepr']
 
 
@@ -222,28 +215,27 @@ def test_report_crash_and_traceback(tests):
     ]
 
 
-def test_no_traceback(misc_testdir, load_report):
-    misc_testdir.runpytest('--json-report', '--json-report-no-traceback')
-    tests_ = tests(load_report())
+def test_no_traceback(make_json):
+    data = make_json(FILE, ['--json-report', '--json-report-no-traceback'])
+    tests_ = tests(data)
     assert 'traceback' not in tests_['fail_nested']['call']
 
 
-def test_pytest_no_traceback(misc_testdir, load_report):
-    misc_testdir.runpytest('--json-report', '--tb=no')
-    tests_ = tests(load_report())
+def test_pytest_no_traceback(make_json):
+    data = make_json(FILE, ['--json-report', '--tb=no'])
+    tests_ = tests(data)
     assert 'traceback' not in tests_['fail_nested']['call']
 
 
-def test_no_streams(misc_testdir, load_report):
-    misc_testdir.runpytest('--json-report', '--json-report-no-streams')
-    call = tests(load_report())['fail_with_fixture']['call']
+def test_no_streams(make_json):
+    data = make_json(FILE, ['--json-report', '--json-report-no-streams'])
+    call = tests(data)['fail_with_fixture']['call']
     assert 'stdout' not in call
     assert 'stderr' not in call
 
 
-def test_summary_only(misc_testdir, load_report):
-    misc_testdir.runpytest('--json-report', '--json-report-summary')
-    data = load_report()
+def test_summary_only(make_json):
+    data = make_json(FILE, ['--json-report', '--json-report-summary'])
     assert 'summary' in data
     assert 'tests' not in data
 
