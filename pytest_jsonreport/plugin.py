@@ -37,6 +37,9 @@ class JSONReport:
     def pytest_sessionstart(self, session):
         self.start_time = time.time()
 
+    def pytest_addhooks(self, pluginmanager):
+        pluginmanager.add_hookspecs(Hooks)
+
     @pytest.hookimpl(hookwrapper=True)
     def pytest_runtest_makereport(self, item, call):
         outcome = yield
@@ -79,6 +82,7 @@ class JSONReport:
         }
         if self.show_test_details:
             json_report['tests'] = list(self.tests.values())
+        self.config.hook.pytest_json_modifyreport(json_report=json_report)
         self.save_report(json_report)
 
     def add_metadata(self):
@@ -166,6 +170,12 @@ class JSONReport:
         metadata = {}
         request.node._json_metadata = metadata
         return metadata
+
+
+class Hooks:
+
+    def pytest_json_modifyreport(self, json_report):
+        pass
 
 
 def pytest_addoption(parser):
