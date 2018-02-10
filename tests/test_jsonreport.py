@@ -189,12 +189,10 @@ def test_report_longrepr(json_data, tests):
 def test_report_crash_and_traceback(tests):
     assert 'traceback' not in tests['pass']['call']
     call = tests['fail_nested']['call']
-    assert call['crash'] == {
-        'path': 'test_report_crash_and_traceback.py',
-        'lineno': 54,
-        'info': 'TypeError: unsupported operand type(s) for -: \'int\' and '
-                '\'NoneType\''
-    }
+    assert call['crash']['path'].endswith('test_report_crash_and_traceback.py')
+    assert call['crash']['lineno'] == 54
+    assert call['crash']['info'] == ('TypeError: unsupported operand type(s) '
+                                     'for -: \'int\' and \'NoneType\'')
     assert call['traceback'] == [
         {
             'path': 'test_report_crash_and_traceback.py',
@@ -226,6 +224,12 @@ def test_report_crash_and_traceback(tests):
 
 def test_no_traceback(misc_testdir, load_report):
     misc_testdir.runpytest('--json-report', '--json-report-no-traceback')
+    tests_ = tests(load_report())
+    assert 'traceback' not in tests_['fail_nested']['call']
+
+
+def test_pytest_no_traceback(misc_testdir, load_report):
+    misc_testdir.runpytest('--json-report', '--tb=no')
     tests_ = tests(load_report())
     assert 'traceback' not in tests_['fail_nested']['call']
 

@@ -22,7 +22,8 @@ class JSONReport:
 
     @property
     def show_traceback(self):
-        return not self.config.option.json_report_no_traceback
+        return not self.config.option.json_report_no_traceback and \
+               self.config.option.tbstyle != 'no'
 
     @property
     def show_streams(self):
@@ -135,8 +136,7 @@ class JSONReport:
             return {}
         data = {
             'crash': {
-                # We don't use crash.path because we want the shorthand
-                'path': tb.reprentries[-1].reprfileloc.path,
+                'path': crash.path,
                 'lineno': crash.lineno,
                 'info': crash.message,
             },
