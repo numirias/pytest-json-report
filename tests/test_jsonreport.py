@@ -296,6 +296,7 @@ def test_summary_only(make_json):
     assert 'summary' in data
     assert 'tests' not in data
     assert 'collectors' not in data
+    assert 'warnings' not in data
 
 
 def test_report_streams(tests):
@@ -371,7 +372,7 @@ def test_warnings(make_json):
     assert warnings[0]['nodeid'] == 'test_warnings.py::TestFoo'
 
 
-def test_process_report(testdir, make_json, capsys):
+def test_process_report(testdir, make_json):
     testdir.makeconftest("""
         def pytest_sessionfinish(session):
             assert session.config._json_report.report['exitcode'] == 0
