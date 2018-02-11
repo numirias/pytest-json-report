@@ -45,6 +45,8 @@ class JSONReport:
     def pytest_collectreport(self, report):
         collector = self.json_collector(report)
         if report.longrepr:
+            # Unfortunately, the collection report doesn't provide crash
+            # details, so we can only add the message, but no traceback etc.
             collector['longrepr'] = str(report.longrepr)
         self.collectors.append(collector)
 
@@ -77,8 +79,8 @@ class JSONReport:
         if not self.want_summary:
             json_report['collectors'] = self.collectors
             json_report['tests'] = list(self.tests.values())
-        if self.warnings:
-            json_report['warnings'] = self.warnings
+            if self.warnings:
+                json_report['warnings'] = self.warnings
         self.config.hook.pytest_json_modifyreport(json_report=json_report)
         self.save_report(json_report)
         # self.report isn't ever used, but it's useful if the report needs to
