@@ -11,8 +11,11 @@ class JSONReport:
     def __init__(self, config):
         self.config = config
         self.start_time = None
-        self.report_size = 0
         self.tests = OrderedDict()
+        self.collectors = []
+        self.warnings = []
+        self.report = None
+        self.report_size = 0
 
     @property
     def report_file(self):
@@ -21,23 +24,29 @@ class JSONReport:
                '.report.json'
 
     @property
-    def show_traceback(self):
+    def want_traceback(self):
         return not self.config.option.json_report_no_traceback and \
                self.config.option.tbstyle != 'no'
 
     @property
-    def show_streams(self):
+    def want_streams(self):
         return not self.config.option.json_report_no_streams
 
     @property
-    def show_test_details(self):
-        return not self.config.option.json_report_summary
+    def want_summary(self):
+        return self.config.option.json_report_summary
 
     def pytest_addhooks(self, pluginmanager):
         pluginmanager.add_hookspecs(Hooks)
 
     def pytest_sessionstart(self, session):
         self.start_time = time.time()
+
+    def pytest_collectreport(self, report):
+        collector = self.json_collector(report)
+        if report.longrepr:
+            collector['longrepr'] = str(report.longrepr)
+        self.collectors.append(collector)
 
     @pytest.hookimpl(hookwrapper=True)
     def pytest_runtest_makereport(self, item, call):
@@ -46,30 +55,45 @@ class JSONReport:
         try:
             test = self.tests[item]
         except KeyError:
-            test = self.json_test(item)
+            test = self.json_testitem(item)
             self.tests[item] = test
         # Update total test outcome, if necessary. The total outcome can be
         # different from the outcome of the setup/call/teardown stage.
         outcome = self.config.hook.pytest_report_teststatus(report=report)[0]
         if outcome not in ['passed', '']:
             test['outcome'] = outcome
-        test[call.when] = self.json_stage(item, report)
+        test[call.when] = self.json_teststage(item, report)
 
     def pytest_sessionfinish(self, session):
         self.add_metadata()
         json_report = {
             'created': time.time(),
             'duration': time.time() - self.start_time,
+            'exitcode': session.exitstatus,
+            'root': str(session.fspath),
             'environment': getattr(self.config, '_metadata', {}),
             'summary': self.json_summary(),
         }
-        if self.show_test_details:
+        if not self.want_summary:
+            json_report['collectors'] = self.collectors
             json_report['tests'] = list(self.tests.values())
+        if self.warnings:
+            json_report['warnings'] = self.warnings
         self.config.hook.pytest_json_modifyreport(json_report=json_report)
         self.save_report(json_report)
+        # self.report isn't ever used, but it's useful if the report needs to
+        # be processed by another script/plugin.
+        self.report = json_report
+
+    def pytest_logwarning(self, code, fslocation, message, nodeid):
+        self.warnings.append({
+            'code': code,
+            'path': str(fslocation),
+            'nodeid': nodeid,
+            'message': message,
+        })
 
     def pytest_terminal_summary(self, terminalreporter):
-        print(terminalreporter.stats)
         terminalreporter.write_sep('-', 'JSON report')
         terminalreporter.write_line('report written to: %s (%d bytes)' %
                                     (self.report_file, self.report_size))
@@ -96,19 +120,45 @@ class JSONReport:
             json.dump(json_report, f)
             self.report_size = f.tell()
 
-    def json_test(self, item):
-        """Return JSON-serializable object for a test item."""
-        path, line, domain = item.location
+    def json_collector(self, report):
+        """Return JSON-serializable collector node."""
         return {
-            'nodeid': item.nodeid,
+            'nodeid': report.nodeid,
+            # This is the outcome of the collection, not the test outcome
+            'outcome': report.outcome,
+            'children': [{
+                'nodeid': node.nodeid,
+                'type': node.__class__.__name__,
+                **self.json_location(node),
+            } for node in report.result],
+        }
+
+    def json_location(self, node):
+        """Return JSON-serializable node location."""
+        try:
+            path, line, domain = node.location
+        except AttributeError:
+            return {}
+        return {
             'path': path,
             'lineno': line,
             'domain': domain,
-            'keywords': list(item.keywords),
-            'outcome': 'passed',  # Will be overridden in case of failure
         }
 
-    def json_stage(self, item, report):
+    def json_testitem(self, item):
+        """Return JSON-serializable test item."""
+        return {
+            'nodeid': item.nodeid,
+            # Adding the location in the collector dict *and* here appears
+            # redundant, but the docs say they may be different
+            **self.json_location(item),
+            # item.keywords is actually a dict, but we just save the keys
+            'keywords': list(item.keywords),
+            # The outcome will be overridden in case of failure
+            'outcome': 'passed',
+        }
+
+    def json_teststage(self, item, report):
         """Return JSON-serializable test stage (setup/call/teardown)."""
         stage = {
             'duration': report.duration,
@@ -122,14 +172,14 @@ class JSONReport:
         return stage
 
     def json_streams(self, item, when):
-        """Return JSON-serializable object for the standard stream output."""
-        if not self.show_streams:
+        """Return JSON-serializable output of the standard streams."""
+        if not self.want_streams:
             return {}
         return {key: val for when_, key, val in item._report_sections if
                 when_ == when and key in ['stdout', 'stderr']}
 
     def json_crash(self, report):
-        """Return JSON-serializable object for the crash."""
+        """Return JSON-serializable crash details."""
         try:
             crash = report.longrepr.reprcrash
         except AttributeError:
@@ -138,28 +188,28 @@ class JSONReport:
             'crash': {
                 'path': crash.path,
                 'lineno': crash.lineno,
-                'info': crash.message,
+                'message': crash.message,
             },
         }
 
     def json_traceback(self, report):
-        """Return JSON-serializable object for the traceback."""
+        """Return JSON-serializable traceback details."""
         try:
             tb = report.longrepr.reprtraceback
         except AttributeError:
             return {}
-        if not self.show_traceback:
+        if not self.want_traceback:
             return {}
         return {
             'traceback': [{
                 'path': entry.reprfileloc.path,
                 'lineno': entry.reprfileloc.lineno,
-                'info': entry.reprfileloc.message,
+                'message': entry.reprfileloc.message,
             } for entry in tb.reprentries],
         }
 
     def json_summary(self):
-        """Return JSON-serializable object summarizing the test results."""
+        """Return JSON-serializable test result summary."""
         summary = Counter([t['outcome'] for t in self.tests.values()])
         summary['total'] = sum(summary.values())
         return summary

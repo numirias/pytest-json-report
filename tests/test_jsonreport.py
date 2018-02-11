@@ -69,6 +69,10 @@ def test_fail_nested():
         v = [bar(x) for x in range(3)]
         return v
     foo()
+
+@pytest.mark.parametrize('x', [1, 2])
+def test_parametrized(x):
+    assert x == 1
 """
 
 
@@ -141,9 +145,63 @@ def test_create_report_file_priority(misc_testdir):
     assert (misc_testdir.tmpdir / 'arg.json').exists()
 
 
-def test_report_context(make_json):
-    assert set(make_json()) == set(['created', 'duration', 'environment',
-                                  'tests', 'summary'])
+def test_report_keys(make_json):
+    data = make_json()
+    assert set(data) == set([
+        'created', 'duration', 'environment', 'collectors', 'tests', 'summary',
+        'root', 'exitcode'
+    ])
+    assert isinstance(data['created'], float)
+    assert isinstance(data['duration'], float)
+    assert data['root'].startswith('/')
+    assert data['exitcode'] == 1
+
+
+def test_report_collectors(make_json):
+    collectors = make_json()['collectors']
+    assert len(collectors) == 2
+    assert all(c['outcome'] == 'passed' for c in collectors)
+    assert collectors[0] == {
+        'nodeid': '',
+        'outcome': 'passed',
+        'children': [
+            {
+                'nodeid': 'test_report_collectors.py',
+                'type': 'Module',
+            }
+        ]
+    }
+    assert {
+        'nodeid': 'test_report_collectors.py::test_pass',
+        'type': 'Function',
+        'path': 'test_report_collectors.py',
+        'lineno': 24,
+        'domain': 'test_pass',
+    } in collectors[1]['children']
+
+
+def test_report_failed_collector(make_json):
+    data = make_json("""
+        syntax error
+        def test_foo():
+            assert True
+    """)
+    collectors = data['collectors']
+    assert data['tests'] == []
+    assert collectors[0]['outcome'] == 'passed'
+    assert collectors[1]['outcome'] == 'failed'
+    assert collectors[1]['children'] == []
+    assert 'longrepr' in collectors[1]
+
+
+def test_report_failed_collector2(make_json):
+    data = make_json("""
+        import nonexistent
+        def test_foo():
+            pass
+    """)
+    collectors = data['collectors']
+    assert collectors[1]['longrepr'].startswith('ImportError')
 
 
 def test_report_item_keys(tests):
@@ -153,7 +211,7 @@ def test_report_item_keys(tests):
 
 
 def test_report_outcomes(tests):
-    assert len(tests) == 8
+    assert len(tests) == 10
     assert tests['pass']['outcome'] == 'passed'
     assert tests['fail_with_fixture']['outcome'] == 'failed'
     assert tests['xfail']['outcome'] == 'xfailed'
@@ -165,9 +223,9 @@ def test_report_outcomes(tests):
 
 def test_report_summary(make_json):
     assert make_json()['summary'] == {
-        'total': 8,
-        'passed': 1,
-        'failed': 2,
+        'total': 10,
+        'passed': 2,
+        'failed': 3,
         'skipped': 1,
         'xpassed': 1,
         'xfailed': 1,
@@ -184,33 +242,32 @@ def test_report_crash_and_traceback(tests):
     call = tests['fail_nested']['call']
     assert call['crash']['path'].endswith('test_report_crash_and_traceback.py')
     assert call['crash']['lineno'] == 54
-    assert call['crash']['info'] == ('TypeError: unsupported operand type(s) '
-                                     'for -: \'int\' and \'NoneType\'')
+    assert call['crash']['message'].startswith('TypeError: unsupported ')
     assert call['traceback'] == [
         {
             'path': 'test_report_crash_and_traceback.py',
             'lineno': 65,
-            'info': ''
+            'message': ''
         },
         {
             'path': 'test_report_crash_and_traceback.py',
             'lineno': 63,
-            'info': 'in foo'
+            'message': 'in foo'
         },
         {
             'path': 'test_report_crash_and_traceback.py',
             'lineno': 63,
-            'info': 'in <listcomp>'
+            'message': 'in <listcomp>'
         },
         {
             'path': 'test_report_crash_and_traceback.py',
             'lineno': 59,
-            'info': 'in bar'
+            'message': 'in bar'
         },
         {
             'path': 'test_report_crash_and_traceback.py',
             'lineno': 54,
-            'info': 'TypeError'
+            'message': 'TypeError'
         }
     ]
 
@@ -238,6 +295,7 @@ def test_summary_only(make_json):
     data = make_json(FILE, ['--json-report', '--json-report-summary'])
     assert 'summary' in data
     assert 'tests' not in data
+    assert 'collectors' not in data
 
 
 def test_report_streams(tests):
@@ -280,7 +338,7 @@ def test_json_metadata(make_json):
     assert tests_['unserializable_metadata']['metadata'].startswith('{\'a\':')
 
 
-def test_enviroment_via_metadata_plugin(make_json):
+def test_environment_via_metadata_plugin(make_json):
     data = make_json('', ['--json-report', '--metadata', 'x', 'y'])
     assert 'Python' in data['environment']
     assert data['environment']['x'] == 'y'
@@ -298,3 +356,29 @@ def test_modifyreport_hook(testdir, make_json):
     """)
     assert data['foo'] == 'bar'
     assert 'summary' not in data
+
+
+def test_warnings(make_json):
+    warnings = make_json("""
+        class TestFoo:
+            def __init__(self):
+                pass
+            def test_foo(self):
+                assert True
+    """)['warnings']
+    assert len(warnings) == 1
+    assert set(warnings[0]) == {'code', 'path', 'nodeid', 'message'}
+    assert warnings[0]['nodeid'] == 'test_warnings.py::TestFoo'
+
+
+def test_process_report(testdir, make_json, capsys):
+    testdir.makeconftest("""
+        def pytest_sessionfinish(session):
+            assert session.config._json_report.report['exitcode'] == 0
+    """)
+    testdir.makepyfile("""
+        def test_foo():
+            assert True
+    """)
+    res = testdir.runpytest('--json-report')
+    assert res.ret == 0
