@@ -264,6 +264,15 @@ A test stage item.
 
 A list of warnings that occurred during the session. (See the [pytest docs on warnings](https://docs.pytest.org/en/latest/warnings.html).)
 
+| Key | Description |
+| --- | --- |
+| `code` | Warning code. |
+| `path` | Absolute path to the associated file. |
+| `nodeid` | Associated node ID. |
+| `message` | Warning message. |
+
+#### Example
+
 ```python
 [
     {
@@ -274,13 +283,6 @@ A list of warnings that occurred during the session. (See the [pytest docs on wa
     }
 ]
 ```
-
-| Key | Description |
-| --- | --- |
-| `code` | Warning code. |
-| `path` | Absolute path to the associated file. |
-| `nodeid` | Associated node ID. |
-| `message` | Warning message. |
 
 ## Metadata
 

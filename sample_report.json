@@ -1,0 +1,472 @@
+{
+    "created": 1518906088.2956867,
+    "duration": 0.039145708084106445,
+    "exitcode": 1,
+    "root": "/tmp/pytest-of-user/pytest-1/test_report_keys0",
+    "environment": {
+        "Python": "3.6.4",
+        "Platform": "Linux-1.2.3-4-ARCH-x86_64-with-arch",
+        "Packages": {
+            "pytest": "3.4.0",
+            "py": "1.5.2",
+            "pluggy": "0.6.0"
+        },
+        "Plugins": {
+            "xdist": "1.22.0",
+            "metadata": "1.5.1",
+            "json-report": "0.5.0",
+            "forked": "0.2",
+            "cov": "2.5.1"
+        }
+    },
+    "summary": {
+        "passed": 2,
+        "failed": 3,
+        "xfailed": 1,
+        "xpassed": 1,
+        "error": 2,
+        "skipped": 1,
+        "total": 10
+    },
+    "collectors": [
+        {
+            "nodeid": "",
+            "outcome": "passed",
+            "children": [
+                {
+                    "nodeid": "test_report_keys.py",
+                    "type": "Module"
+                }
+            ]
+        },
+        {
+            "nodeid": "test_report_keys.py",
+            "outcome": "passed",
+            "children": [
+                {
+                    "nodeid": "test_report_keys.py::test_pass",
+                    "type": "Function",
+                    "path": "test_report_keys.py",
+                    "lineno": 24,
+                    "domain": "test_pass"
+                },
+                {
+                    "nodeid": "test_report_keys.py::test_fail_with_fixture",
+                    "type": "Function",
+                    "path": "test_report_keys.py",
+                    "lineno": 27,
+                    "domain": "test_fail_with_fixture"
+                },
+                {
+                    "nodeid": "test_report_keys.py::test_xfail",
+                    "type": "Function",
+                    "path": "test_report_keys.py",
+                    "lineno": 32,
+                    "domain": "test_xfail"
+                },
+                {
+                    "nodeid": "test_report_keys.py::test_xfail_but_passing",
+                    "type": "Function",
+                    "path": "test_report_keys.py",
+                    "lineno": 36,
+                    "domain": "test_xfail_but_passing"
+                },
+                {
+                    "nodeid": "test_report_keys.py::test_fail_during_setup",
+                    "type": "Function",
+                    "path": "test_report_keys.py",
+                    "lineno": 40,
+                    "domain": "test_fail_during_setup"
+                },
+                {
+                    "nodeid": "test_report_keys.py::test_fail_during_teardown",
+                    "type": "Function",
+                    "path": "test_report_keys.py",
+                    "lineno": 43,
+                    "domain": "test_fail_during_teardown"
+                },
+                {
+                    "nodeid": "test_report_keys.py::test_skip",
+                    "type": "Function",
+                    "path": "test_report_keys.py",
+                    "lineno": 46,
+                    "domain": "test_skip"
+                },
+                {
+                    "nodeid": "test_report_keys.py::test_fail_nested",
+                    "type": "Function",
+                    "path": "test_report_keys.py",
+                    "lineno": 50,
+                    "domain": "test_fail_nested"
+                },
+                {
+                    "nodeid": "test_report_keys.py::test_parametrized[1]",
+                    "type": "Function",
+                    "path": "test_report_keys.py",
+                    "lineno": 66,
+                    "domain": "test_parametrized[1]"
+                },
+                {
+                    "nodeid": "test_report_keys.py::test_parametrized[2]",
+                    "type": "Function",
+                    "path": "test_report_keys.py",
+                    "lineno": 66,
+                    "domain": "test_parametrized[2]"
+                }
+            ]
+        }
+    ],
+    "tests": [
+        {
+            "nodeid": "test_report_keys.py::test_pass",
+            "path": "test_report_keys.py",
+            "lineno": 24,
+            "domain": "test_pass",
+            "keywords": [
+                "test_report_keys.py",
+                "test_pass",
+                "test_report_keys0"
+            ],
+            "outcome": "passed",
+            "setup": {
+                "duration": 0.00018668174743652344,
+                "outcome": "passed"
+            },
+            "call": {
+                "duration": 0.0001316070556640625,
+                "outcome": "passed"
+            },
+            "teardown": {
+                "duration": 0.0001304149627685547,
+                "outcome": "passed"
+            },
+            "metadata_key": "metadata_value",
+        },
+        {
+            "nodeid": "test_report_keys.py::test_fail_with_fixture",
+            "path": "test_report_keys.py",
+            "lineno": 27,
+            "domain": "test_fail_with_fixture",
+            "keywords": [
+                "test_report_keys0",
+                "test_report_keys.py",
+                "test_fail_with_fixture"
+            ],
+            "outcome": "failed",
+            "setup": {
+                "duration": 0.0003123283386230469,
+                "outcome": "passed",
+                "stdout": "setup\n",
+                "stderr": "setuperr\n"
+            },
+            "call": {
+                "duration": 0.00022935867309570312,
+                "outcome": "failed",
+                "crash": {
+                    "path": "/tmp/pytest-of-user/pytest-1/test_report_keys0/test_report_keys.py",
+                    "lineno": 31,
+                    "message": "assert False"
+                },
+                "traceback": [
+                    {
+                        "path": "test_report_keys.py",
+                        "lineno": 31,
+                        "message": "AssertionError"
+                    }
+                ],
+                "stdout": "call\n",
+                "stderr": "callerr\n",
+                "longrepr": "setup_teardown_fixture = None\n\n    def test_fail_with_fixture(setup_teardown_fixture):\n        print('call')\n        print('callerr', file=sys.stderr)\n>       assert False\nE       assert False\n\ntest_report_keys.py:31: AssertionError"
+            },
+            "teardown": {
+                "duration": 0.00021600723266601562,
+                "outcome": "passed",
+                "stdout": "teardown\n",
+                "stderr": "teardownerr\n"
+            }
+        },
+        {
+            "nodeid": "test_report_keys.py::test_xfail",
+            "path": "test_report_keys.py",
+            "lineno": 32,
+            "domain": "test_xfail",
+            "keywords": [
+                "test_report_keys0",
+                "xfail",
+                "test_report_keys.py",
+                "test_xfail",
+                "pytestmark"
+            ],
+            "outcome": "xfailed",
+            "setup": {
+                "duration": 0.00015234947204589844,
+                "outcome": "passed"
+            },
+            "call": {
+                "duration": 0.00018644332885742188,
+                "outcome": "skipped",
+                "crash": {
+                    "path": "/tmp/pytest-of-user/pytest-1/test_report_keys0/test_report_keys.py",
+                    "lineno": 35,
+                    "message": "assert False"
+                },
+                "traceback": [
+                    {
+                        "path": "test_report_keys.py",
+                        "lineno": 35,
+                        "message": "AssertionError"
+                    }
+                ],
+                "longrepr": "@pytest.mark.xfail(reason='testing xfail')\n    def test_xfail():\n>       assert False\nE       assert False\n\ntest_report_keys.py:35: AssertionError"
+            },
+            "teardown": {
+                "duration": 0.00013566017150878906,
+                "outcome": "passed"
+            }
+        },
+        {
+            "nodeid": "test_report_keys.py::test_xfail_but_passing",
+            "path": "test_report_keys.py",
+            "lineno": 36,
+            "domain": "test_xfail_but_passing",
+            "keywords": [
+                "test_xfail_but_passing",
+                "test_report_keys0",
+                "xfail",
+                "test_report_keys.py",
+                "pytestmark"
+            ],
+            "outcome": "xpassed",
+            "setup": {
+                "duration": 0.00014591217041015625,
+                "outcome": "passed"
+            },
+            "call": {
+                "duration": 0.0001232624053955078,
+                "outcome": "passed"
+            },
+            "teardown": {
+                "duration": 0.00011849403381347656,
+                "outcome": "passed"
+            }
+        },
+        {
+            "nodeid": "test_report_keys.py::test_fail_during_setup",
+            "path": "test_report_keys.py",
+            "lineno": 40,
+            "domain": "test_fail_during_setup",
+            "keywords": [
+                "test_fail_during_setup",
+                "test_report_keys.py",
+                "test_report_keys0"
+            ],
+            "outcome": "error",
+            "setup": {
+                "duration": 0.00032401084899902344,
+                "outcome": "failed",
+                "crash": {
+                    "path": "/tmp/pytest-of-user/pytest-1/test_report_keys0/test_report_keys.py",
+                    "lineno": 16,
+                    "message": "assert False"
+                },
+                "traceback": [
+                    {
+                        "path": "test_report_keys.py",
+                        "lineno": 16,
+                        "message": "AssertionError"
+                    }
+                ],
+                "longrepr": "request = <SubRequest 'fail_setup_fixture' for <Function 'test_fail_during_setup'>>\n\n    @pytest.fixture\n    def fail_setup_fixture(request):\n>       assert False\nE       assert False\n\ntest_report_keys.py:16: AssertionError"
+            },
+            "teardown": {
+                "duration": 0.0001571178436279297,
+                "outcome": "passed"
+            }
+        },
+        {
+            "nodeid": "test_report_keys.py::test_fail_during_teardown",
+            "path": "test_report_keys.py",
+            "lineno": 43,
+            "domain": "test_fail_during_teardown",
+            "keywords": [
+                "test_fail_during_teardown",
+                "test_report_keys.py",
+                "test_report_keys0"
+            ],
+            "outcome": "error",
+            "setup": {
+                "duration": 0.00028061866760253906,
+                "outcome": "passed"
+            },
+            "call": {
+                "duration": 0.0001316070556640625,
+                "outcome": "passed"
+            },
+            "teardown": {
+                "duration": 0.00021123886108398438,
+                "outcome": "failed",
+                "crash": {
+                    "path": "/tmp/pytest-of-user/pytest-1/test_report_keys0/test_report_keys.py",
+                    "lineno": 21,
+                    "message": "assert False"
+                },
+                "traceback": [
+                    {
+                        "path": "test_report_keys.py",
+                        "lineno": 21,
+                        "message": "AssertionError"
+                    }
+                ],
+                "longrepr": "def fn():\n>       assert False\nE       assert False\n\ntest_report_keys.py:21: AssertionError"
+            }
+        },
+        {
+            "nodeid": "test_report_keys.py::test_skip",
+            "path": "test_report_keys.py",
+            "lineno": 46,
+            "domain": "test_skip",
+            "keywords": [
+                "skipif",
+                "test_skip",
+                "test_report_keys0",
+                "test_report_keys.py",
+                "pytestmark"
+            ],
+            "outcome": "skipped",
+            "setup": {
+                "duration": 0.00013780593872070312,
+                "outcome": "skipped",
+                "longrepr": "('test_report_keys.py', 46, 'Skipped: testing skip')"
+            },
+            "teardown": {
+                "duration": 0.00011587142944335938,
+                "outcome": "passed"
+            }
+        },
+        {
+            "nodeid": "test_report_keys.py::test_fail_nested",
+            "path": "test_report_keys.py",
+            "lineno": 50,
+            "domain": "test_fail_nested",
+            "keywords": [
+                "test_fail_nested",
+                "test_report_keys.py",
+                "test_report_keys0"
+            ],
+            "outcome": "failed",
+            "setup": {
+                "duration": 0.00014138221740722656,
+                "outcome": "passed"
+            },
+            "call": {
+                "duration": 0.00019073486328125,
+                "outcome": "failed",
+                "crash": {
+                    "path": "/tmp/pytest-of-user/pytest-1/test_report_keys0/test_report_keys.py",
+                    "lineno": 54,
+                    "message": "TypeError: unsupported operand type(s) for -: 'int' and 'NoneType'"
+                },
+                "traceback": [
+                    {
+                        "path": "test_report_keys.py",
+                        "lineno": 65,
+                        "message": ""
+                    },
+                    {
+                        "path": "test_report_keys.py",
+                        "lineno": 63,
+                        "message": "in foo"
+                    },
+                    {
+                        "path": "test_report_keys.py",
+                        "lineno": 63,
+                        "message": "in <listcomp>"
+                    },
+                    {
+                        "path": "test_report_keys.py",
+                        "lineno": 59,
+                        "message": "in bar"
+                    },
+                    {
+                        "path": "test_report_keys.py",
+                        "lineno": 54,
+                        "message": "TypeError"
+                    }
+                ],
+                "stdout": "foo\n0\nbar\n",
+                "longrepr": "def test_fail_nested():\n        def baz(o=1):\n            c = 3\n            return 2 - c - None\n        def bar(m, n=5):\n            b = 2\n            print(m)\n            print('bar')\n            return baz()\n        def foo():\n            a = 1\n            print('foo')\n            v = [bar(x) for x in range(3)]\n            return v\n>       foo()\n\ntest_report_keys.py:65: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \ntest_report_keys.py:63: in foo\n    v = [bar(x) for x in range(3)]\ntest_report_keys.py:63: in <listcomp>\n    v = [bar(x) for x in range(3)]\ntest_report_keys.py:59: in bar\n    return baz()\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\no = 1\n\n    def baz(o=1):\n        c = 3\n>       return 2 - c - None\nE       TypeError: unsupported operand type(s) for -: 'int' and 'NoneType'\n\ntest_report_keys.py:54: TypeError"
+            },
+            "teardown": {
+                "duration": 0.00014281272888183594,
+                "outcome": "passed"
+            }
+        },
+        {
+            "nodeid": "test_report_keys.py::test_parametrized[1]",
+            "path": "test_report_keys.py",
+            "lineno": 66,
+            "domain": "test_parametrized[1]",
+            "keywords": [
+                "1",
+                "parametrize",
+                "test_report_keys0",
+                "test_parametrized[1]",
+                "test_report_keys.py",
+                "pytestmark"
+            ],
+            "outcome": "passed",
+            "setup": {
+                "duration": 0.000263214111328125,
+                "outcome": "passed"
+            },
+            "call": {
+                "duration": 0.00014281272888183594,
+                "outcome": "passed"
+            },
+            "teardown": {
+                "duration": 0.0001480579376220703,
+                "outcome": "passed"
+            }
+        },
+        {
+            "nodeid": "test_report_keys.py::test_parametrized[2]",
+            "path": "test_report_keys.py",
+            "lineno": 66,
+            "domain": "test_parametrized[2]",
+            "keywords": [
+                "parametrize",
+                "test_report_keys0",
+                "test_report_keys.py",
+                "2",
+                "pytestmark",
+                "test_parametrized[2]"
+            ],
+            "outcome": "failed",
+            "setup": {
+                "duration": 0.0002613067626953125,
+                "outcome": "passed"
+            },
+            "call": {
+                "duration": 0.0002589225769042969,
+                "outcome": "failed",
+                "crash": {
+                    "path": "/tmp/pytest-of-user/pytest-1/test_report_keys0/test_report_keys.py",
+                    "lineno": 69,
+                    "message": "assert 2 == 1"
+                },
+                "traceback": [
+                    {
+                        "path": "test_report_keys.py",
+                        "lineno": 69,
+                        "message": "AssertionError"
+                    }
+                ],
+                "longrepr": "x = 2\n\n    @pytest.mark.parametrize('x', [1, 2])\n    def test_parametrized(x):\n>       assert x == 1\nE       assert 2 == 1\n\ntest_report_keys.py:69: AssertionError"
+            },
+            "teardown": {
+                "duration": 0.00016546249389648438,
+                "outcome": "passed"
+            }
+        }
+    ]
+}
