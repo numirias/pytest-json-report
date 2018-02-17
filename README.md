@@ -4,9 +4,9 @@
 [![PyPI Version](https://img.shields.io/pypi/v/pytest-json-report.svg)](https://pypi.python.org/pypi/pytest-json-report)
 [![Python Versions](https://img.shields.io/pypi/pyversions/pytest-json-report.svg)](https://pypi.python.org/pypi/pytest-json-report)
 
-This pytest plugin saves test reports to JSON files, so that the results can be processed by other applications.
+This pytest plugin creates JSON test reports, so that the results can be processed by other applications.
 
-You can have a large report including captured output and exception tracebacks, or just a summary, as you wish. Also, you can add metadata by using a fixture or implement hooks to modify the entire report.
+You can have a large report including captured output and exception tracebacks, or just a summary, as you wish. Also, there are fixtures and hooks available to [add metadata](#metadata) and customize the report.
 
 ## Installation
 
@@ -15,45 +15,50 @@ pip install pytest-json-report --upgrade
 ```
 ## Usage
 
-Just run pytest with `--json-report`. (The report is saved in `.report.json` by default.)
+Just run pytest with `--json-report`. The report is saved in `.report.json` by default.
 
 ```
 $ pytest -v --json-report
 $ cat .report.json
 {"created": 1518371686.7981803, ... "tests":[{"nodeid": "test_foo.py", "outcome": "passed", ...}, ...]}
 ```
-Available switches:
+Available options:
 
-```
-$ pytest -h
-...
-reporting test results as JSON:
-  --json-report         create JSON report
-  --json-report-file=JSON_REPORT_FILE
-                        target path to save JSON report
-  --json-report-no-traceback
-                        don't include tracebacks in JSON report
-  --json-report-no-streams
-                        don't include stdout/stderr output in JSON report
-  --json-report-summary
-                        just create a summary without per-test details
-...
-[pytest] ini-options in the first pytest.ini|tox.ini|setup.cfg file found:
-  json_report_file (string) target file to save JSON report
-...
-```
+| Option | Description |
+| --- | --- |
+| `--json-report` | Create JSON report |
+| `--json-report-file=JSON_REPORT_FILE` | Target path to save JSON report |
+| `--json-report-no-traceback` | Don't include tracebacks in JSON report |
+| `--json-report-no-streams` | Don't include stdout/stderr output in JSON report |
+| `--json-report-summary` |  Just create a summary without per-test details |
+
+
 If your report files are getting uncomfortably large, try `--json-report-no-streams` or `--json-report-summary`.
 
 ## Format
 
-The JSON report contains metadata of the session, a summary, collectors, tests and warnings:
+The JSON report contains metadata of the session, a summary, collectors, tests and warnings. You can find a sample report in [`sample_report.json`](sample_report.json).
+
+| Key | Description |
+| --- | --- |
+| `created` | Report creation date. (Unix time) |
+| `duration` | Session duration in seconds. |
+| `exitcode` | Process exit code as listed [in the pytest docs](https://docs.pytest.org/en/latest/usage.html#possible-exit-codes). The exit code is a quick way to tell if any tests failed, an internal error occurred, etc. |
+| `root` | Absolute root path from which the session was started. |
+| `environment` | [Environment](#environment) entry. |
+| `summary` | [Summary](#summary) entry. |
+| `collectors` | [Collectors](#collectors) entry. (absent if `--json-report-summary`)  |
+| `tests` | [Tests](#tests) entry. (absent if `--json-report-summary`)  |
+| `warnings` | [Warnings](#warnings) entry. (absent if `--json-report-summary` or if no warnings occurred)  |
+
+#### Example
 
 ```python
 {
-    "created": 1518371686.7981803, # Creation date timestamp
-    "duration": 0.1235666275024414, # Session duration in seconds
-    "exitcode": 1, # Exit code as listed in https://docs.pytest.org/en/latest/usage.html#possible-exit-codes
-    "root": "/tmp/path/to/tests",
+    "created": 1518371686.7981803,
+    "duration": 0.1235666275024414,
+    "exitcode": 1,
+    "root": "/path/to/tests",
     "environment": ENVIRONMENT,
     "summary": SUMMARY,
     "collectors": COLLECTORS,
@@ -64,7 +69,14 @@ The JSON report contains metadata of the session, a summary, collectors, tests a
 
 ### Summary
 
-The summary section lists the number of outcomes per category and the total number of test items.
+Number of outcomes per category and the total number of test items.
+
+| Key | Description |
+| --- | --- |
+| *`outcome`* | Number of tests with that outcome. (absent if number is 0) |
+|  `total` | Total number of tests. |
+
+#### Example
 
 ```python
 {
@@ -82,6 +94,8 @@ The summary section lists the number of outcomes per category and the total numb
 
 The environment section is provided by [pytest-metadata](https://github.com/pytest-dev/pytest-metadata). All metadata given by that plugin will be added here, so you need to make sure it is JSON-serializable.
 
+#### Example
+
 ```python
 {
     "Python": "3.6.4",
@@ -98,13 +112,22 @@ The environment section is provided by [pytest-metadata](https://github.com/pyte
         "forked": "0.2",
         "cov": "2.5.1"
     },
-    "foo": "bar", # Metadata provided by pytest-metadata
+    "foo": "bar", # Custom metadata entry passed via pytest-metadata
 }
 ```
 
 ### Collectors
 
-Collectors are a list of nodes. Nodes in `children` are either test items or other collectors. When a collection fails (e.g. through a syntax error or an exception in the test itself), `longrepr` provides the error message. Note that `outcome` is not the outcome of a test run, but indicates if the collection was successful.
+A list of collector nodes.
+
+| Key | Description |
+| --- | --- |
+| `nodeid` | ID of the test node. ([See docs](https://docs.pytest.org/en/latest/example/markers.html#node-id)) The root node has an empty node ID. |
+| `outcome` | Outcome of the collection. (Not the test outcome!) |
+| `children` | Children of the collector node which are either other collectors or test nodes. |
+| `longrepr` | Representation of the error. (absent if no error occurred) |
+
+#### Example
 
 ```python
 [
@@ -144,7 +167,20 @@ Collectors are a list of nodes. Nodes in `children` are either test items or oth
 
 ### Tests
 
-Tests are a list of test run items. Each completed test stage produces a stage object (`setup`, `call`, `teardown`) with its own `outcome` (which may be different from the overall test outcome). The output of the standard streams (`stdout`, `stderr`), the error message (`longrepr`) and the error details (`crash`, `traceback`) are available as keys on their respective stage.
+A list of test nodes. Each completed test stage produces a stage object (`setup`, `call`, `teardown`) with its own `outcome`.
+
+| Key | Description |
+| --- | --- |
+| `nodeid` | ID of the test node. |
+| `path` | Relative path to the test file. |
+| `lineno` | Line number where the test starts. |
+| `domain` | Name of the test item. |
+| `keywords` | List of keywords and markers associated with the test. |
+| `outcome` | Outcome of the test run. |
+| `{setup, call, teardown}` | [Test stage](#test-stage) entry. To find the error in a failed test you need to check all stages. (absent if stage didn't run) |
+| `metadata` | [Metadata](#metadata) item. |
+
+#### Example
 
 ```python
 [
@@ -159,48 +195,9 @@ Tests are a list of test run items. Each completed test stage produces a stage o
             "test_foo0"
         ],
         "outcome": "failed",
-        "setup": {
-            "duration": 0.00014090538024902344,
-            "outcome": "passed"
-        },
-        "call": {
-            "duration": 0.00018835067749023438,
-            "outcome": "failed",
-            "crash": {
-                "path": "/tmp/path/to/tests/test_foo.py",
-                "lineno": 54,
-                "message": "TypeError: unsupported operand type(s) for -: 'int' and 'NoneType'"
-            },
-            "traceback": [
-                {
-                    "path": "test_foo.py",
-                    "lineno": 65,
-                    "message": ""
-                },
-                {
-                    "path": "test_foo.py",
-                    "lineno": 63,
-                    "message": "in foo"
-                },
-                {
-                    "path": "test_foo.py",
-                    "lineno": 63,
-                    "message": "in <listcomp>"
-                },
-                {
-                    "path": "test_foo.py",
-                    "lineno": 54,
-                    "message": "TypeError"
-                }
-            ],
-            "stdout": "foo\nbar\n",
-            "stderr": "baz\n",
-            "longrepr": "def test_fail_nested():\n ..."
-        },
-        "teardown": {
-            "duration": 0.0001399517059326172,
-            "outcome": "passed"
-        }
+        "setup": TEST_STAGE,
+        "call": TEST_STAGE,
+        "teardown": TEST_STAGE,
         "metadata": {
             "foo": "bar",
         }
@@ -209,20 +206,81 @@ Tests are a list of test run items. Each completed test stage produces a stage o
 ]
 ```
 
+
+### Test stage
+
+A test stage item.
+
+| Key | Description |
+| --- | --- |
+| `duration` | Duration of the test stage in seconds. |
+| `outcome` | Outcome of the test stage. (can be different from the overall test outcome) |
+| `crash` | Crash entry. (absent if no error occurred) |
+| `traceback` | List of traceback entries. (absent if no error occurred) |
+| `stdout` | Standard output. (absent if no stdout output or `--json-report-no-streams`) |
+| `stderr` | Standard error. (absent if no stderr output or `--json-report-no-streams`) |
+| `longrepr` | Representation of the error. (absent if no error occurred) |
+
+#### Example
+
+```python
+{
+    "duration": 0.00018835067749023438,
+    "outcome": "failed",
+    "crash": {
+        "path": "/path/to/tests/test_foo.py",
+        "lineno": 54,
+        "message": "TypeError: unsupported operand type(s) for -: 'int' and 'NoneType'"
+    },
+    "traceback": [
+        {
+            "path": "test_foo.py",
+            "lineno": 65,
+            "message": ""
+        },
+        {
+            "path": "test_foo.py",
+            "lineno": 63,
+            "message": "in foo"
+        },
+        {
+            "path": "test_foo.py",
+            "lineno": 63,
+            "message": "in <listcomp>"
+        },
+        {
+            "path": "test_foo.py",
+            "lineno": 54,
+            "message": "TypeError"
+        }
+    ],
+    "stdout": "foo\nbar\n",
+    "stderr": "baz\n",
+    "longrepr": "def test_fail_nested():\n ..."
+}
+```
+
 ### Warnings
 
-The warnings section contains a list of warnings that occurred during the session. (See the [pytest docs on warnings](https://docs.pytest.org/en/latest/warnings.html).)
+A list of warnings that occurred during the session. (See the [pytest docs on warnings](https://docs.pytest.org/en/latest/warnings.html).)
 
 ```python
 [
     {
         "code": "C1",
-        "path": "/tmp/path/to/tests/test_foo.py",
+        "path": "/path/to/tests/test_foo.py",
         "nodeid": "test_foo.py::TestFoo",
         "message": "cannot collect test class 'TestFoo' because it has a __init__ constructor"
     }
 ]
 ```
+
+| Key | Description |
+| --- | --- |
+| `code` | Warning code. |
+| `path` | Absolute path to the associated file. |
+| `nodeid` | Associated node ID. |
+| `message` | Warning message. |
 
 ## Metadata
 
@@ -251,7 +309,7 @@ def pytest_json_modifyreport(json_report):
     del json_report['summary']
 ```
 
-You can also access the report object using a standard hook (although this isn't recommended). E.g.:
+After `pytest_sessionfinish`, the report object is available via `config._json_report`, so you could also access it using a standard hook (although this isn't recommended). E.g.:
 
 ```python
 def pytest_sessionfinish(session):
