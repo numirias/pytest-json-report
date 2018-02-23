@@ -119,7 +119,11 @@ class JSONReport:
     def save_report(self, json_report):
         """Save the JSON report to file."""
         with open(self.report_file, 'w') as f:
-            json.dump(json_report, f)
+            json.dump(
+                json_report,
+                f,
+                indent=self.config.option.json_report_indent,
+            )
             self.report_size = f.tell()
 
     def json_collector(self, report):
@@ -241,6 +245,7 @@ def pytest_addoption(parser):
     no_traceback_help_text = 'don\'t include tracebacks in JSON report'
     no_stream_help_text = 'don\'t include stdout/stderr output in JSON report'
     summary_help_text = 'just create a summary without per-test details'
+    indent_help_text = 'pretty-print JSON with specified indentation level'
     group = parser.getgroup('jsonreport', 'reporting test results as JSON')
     group.addoption('--json-report', default=False, action='store_true',
                     help='create JSON report')
@@ -251,6 +256,7 @@ def pytest_addoption(parser):
                     action='store_true', help=no_stream_help_text)
     group.addoption('--json-report-summary', default=False,
                     action='store_true', help=summary_help_text)
+    group.addoption('--json-report-indent', type=int, help=indent_help_text)
     parser.addini('json_report_file', file_help_text)
 
 
