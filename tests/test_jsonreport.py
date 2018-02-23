@@ -383,3 +383,12 @@ def test_process_report(testdir, make_json):
     """)
     res = testdir.runpytest('--json-report')
     assert res.ret == 0
+
+
+def test_indent(testdir, make_json):
+    testdir.runpytest('--json-report')
+    with open(str(testdir.tmpdir / '.report.json')) as f:
+        assert len(f.readlines()) == 1
+    testdir.runpytest('--json-report', '--json-report-indent=4')
+    with open(str(testdir.tmpdir / '.report.json')) as f:
+        assert f.readlines()[1].startswith('    "')
