@@ -1,4 +1,5 @@
 import json
+import logging
 import pytest
 
 
@@ -392,3 +393,32 @@ def test_indent(testdir, make_json):
     testdir.runpytest('--json-report', '--json-report-indent=4')
     with open(str(testdir.tmpdir / '.report.json')) as f:
         assert f.readlines()[1].startswith('    "')
+
+
+def test_logging(make_json):
+    data = make_json("""
+        import logging
+        import pytest
+
+        @pytest.fixture
+        def fixture(request):
+            logging.info('log info')
+            def f():
+                logging.warn('log warn')
+            request.addfinalizer(f)
+
+        def test_foo(fixture):
+            logging.error('log error')
+            try:
+                raise
+            except RuntimeError:
+                logging.getLogger().debug('log %s', 'debug', exc_info=True)
+    """, ['--json-report', '--log-level=DEBUG'])
+    test = data['tests'][0]
+    assert test['setup']['log'][0]['msg'] == 'log info'
+    assert test['call']['log'][0]['msg'] == 'log error'
+    assert test['call']['log'][1]['msg'] == 'log debug'
+    assert test['teardown']['log'][0]['msg'] == 'log warn'
+
+    record = logging.makeLogRecord(test['call']['log'][1])
+    assert record.getMessage() == record.msg == 'log debug'

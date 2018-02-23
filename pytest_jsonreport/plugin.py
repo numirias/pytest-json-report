@@ -1,5 +1,7 @@
 from collections import Counter, OrderedDict
+from contextlib import contextmanager
 import json
+import logging
 import time
 
 import pytest
@@ -16,6 +18,7 @@ class JSONReport:
         self.warnings = []
         self.report = None
         self.report_size = 0
+        self.logger = logging.getLogger()
 
     @property
     def report_file(self):
@@ -49,6 +52,34 @@ class JSONReport:
             # details, so we can only add the message, but no traceback etc.
             collector['longrepr'] = str(report.longrepr)
         self.collectors.append(collector)
+
+    def pytest_runtest_protocol(self, item, nextitem):
+        item._json_log = {}
+
+    @contextmanager
+    def capture_log(self, item, when):
+        handler = LoggingHandler()
+        self.logger.addHandler(handler)
+        try:
+            yield
+        finally:
+            self.logger.removeHandler(handler)
+        item._json_log[when] = handler.records
+
+    @pytest.hookimpl(hookwrapper=True)
+    def pytest_runtest_setup(self, item):
+        with self.capture_log(item, 'setup'):
+            yield
+
+    @pytest.hookimpl(hookwrapper=True)
+    def pytest_runtest_call(self, item):
+        with self.capture_log(item, 'call'):
+            yield
+
+    @pytest.hookimpl(hookwrapper=True)
+    def pytest_runtest_teardown(self, item):
+        with self.capture_log(item, 'teardown'):
+            yield
 
     @pytest.hookimpl(hookwrapper=True)
     def pytest_runtest_makereport(self, item, call):
@@ -172,6 +203,7 @@ class JSONReport:
             **self.json_crash(report),
             **self.json_traceback(report),
             **self.json_streams(item, report.when),
+            **self.json_log(item, report.when),
         }
         if report.longreprtext:
             stage['longrepr'] = report.longreprtext
@@ -183,6 +215,12 @@ class JSONReport:
             return {}
         return {key: val for when_, key, val in item._report_sections if
                 when_ == when and key in ['stdout', 'stderr']}
+
+    def json_log(self, item, when):
+        try:
+            return {'log': item._json_log[when]}
+        except KeyError:
+            return {}
 
     def json_crash(self, report):
         """Return JSON-serializable crash details."""
@@ -229,6 +267,21 @@ class JSONReport:
             metadata = {}
             request.node._json_metadata = metadata
         return metadata
+
+
+class LoggingHandler(logging.Handler):
+
+    def __init__(self):
+        super().__init__()
+        self.records = []
+
+    def emit(self, record):
+        d = dict(record.__dict__)
+        d['msg'] = record.getMessage()
+        d['args'] = None
+        d['exc_info'] = None
+        d.pop('message', None)
+        self.records.append(d)
 
 
 class Hooks:
