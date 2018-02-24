@@ -31,6 +31,7 @@ Available options:
 | `--json-report-no-traceback` | Don't include tracebacks in JSON report |
 | `--json-report-no-streams` | Don't include stdout/stderr output in JSON report |
 | `--json-report-summary` |  Just create a summary without per-test details |
+| `--json-report-indent=JSON_REPORT_INDENT` |  Pretty-print JSON with specified indentation level |
 
 
 If your report files are getting uncomfortably large, try `--json-report-no-streams` or `--json-report-summary`.
