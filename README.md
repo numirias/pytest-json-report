@@ -6,7 +6,7 @@
 
 This pytest plugin creates JSON test reports, so that the results can be processed by other applications.
 
-You can have a large report including captured output and exception tracebacks, or just a summary, as you wish. Also, there are fixtures and hooks available to [add metadata](#metadata) and customize the report.
+It can report a summary, test details, captured output, logs, exception tracebacks and more. Additionally, you can use the available fixtures and hooks to [add metadata](#metadata) and customize the report as you like.
 
 ## Installation
 
@@ -220,6 +220,7 @@ A test stage item.
 | `traceback` | List of traceback entries. (absent if no error occurred) |
 | `stdout` | Standard output. (absent if no stdout output or `--json-report-no-streams`) |
 | `stderr` | Standard error. (absent if no stderr output or `--json-report-no-streams`) |
+| `log` | [Log](#log) entry. |
 | `longrepr` | Representation of the error. (absent if no error occurred) |
 
 #### Example
@@ -257,9 +258,47 @@ A test stage item.
     ],
     "stdout": "foo\nbar\n",
     "stderr": "baz\n",
+    "log": LOG,
     "longrepr": "def test_fail_nested():\n ..."
 }
 ```
+
+### Log
+
+A list of log records. The fields of a log record are the [`logging.LogRecord` attributes](https://docs.python.org/3/library/logging.html#logrecord-attributes), with the exception that the fields `exc_info` and `args` are always empty and `msg` contains the formatted log message.
+
+You can apply [`logging.makeLogRecord()`](https://docs.python.org/3/library/logging.html#logging.makeLogRecord)  on a log record to convert it back to a `logging.LogRecord` object.
+
+#### Example
+
+```python
+[
+    {
+        "name": "root",
+        "msg": "This is a warning.",
+        "args": null,
+        "levelname": "WARNING",
+        "levelno": 30,
+        "pathname": "/path/to/tests/test_foo.py",
+        "filename": "test_foo.py",
+        "module": "test_foo",
+        "exc_info": null,
+        "exc_text": null,
+        "stack_info": null,
+        "lineno": 8,
+        "funcName": "foo",
+        "created": 1519772464.291738,
+        "msecs": 291.73803329467773,
+        "relativeCreated": 332.90839195251465,
+        "thread": 140671803118912,
+        "threadName": "MainThread",
+        "processName": "MainProcess",
+        "process": 31481
+    },
+    ...
+]
+```
+
 
 ### Warnings
 
