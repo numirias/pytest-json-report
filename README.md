@@ -359,6 +359,18 @@ def pytest_sessionfinish(session):
     ...
 ```
 
+## Direct invocation
+
+You can also use the plugin when invoking `pytest.main()` directly from code:
+
+```python
+import pytest
+from pytest_jsonreport.plugin import JSONReport
+
+plugin = JSONReport()
+pytest.main(['test_foo.py'], plugins=[plugin])
+print(plugin.report)
+```
 
 ## Related tools
 

@@ -10,7 +10,7 @@ import pytest
 class JSONReport:
     """The JSON report pytest plugin."""
 
-    def __init__(self, config):
+    def __init__(self, config=None):
         self.config = config
         self.start_time = None
         self.tests = OrderedDict()
@@ -38,6 +38,12 @@ class JSONReport:
     @property
     def want_summary(self):
         return self.config.option.json_report_summary
+
+    def pytest_configure(self, config):
+        # When the plugin is used directly from code, it may have been
+        # initialized without a config.
+        if self.config is None:
+            self.config = config
 
     def pytest_addhooks(self, pluginmanager):
         pluginmanager.add_hookspecs(Hooks)
