@@ -2,6 +2,8 @@ import json
 import logging
 import pytest
 
+from pytest_jsonreport.plugin import JSONReport
+
 
 # Some test cases borrowed from github.com/mattcl/pytest-json
 FILE = """
@@ -422,3 +424,14 @@ def test_logging(make_json):
 
     record = logging.makeLogRecord(test['call']['log'][1])
     assert record.getMessage() == record.msg == 'log debug'
+
+
+def test_direct_invocation(testdir):
+    test_file = testdir.makepyfile("""
+        def test_foo():
+            assert True
+    """)
+    plugin = JSONReport()
+    res = pytest.main([test_file.strpath], plugins=[plugin])
+    assert res == 0
+    assert plugin.report['exitcode'] == 0
