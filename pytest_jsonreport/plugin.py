@@ -165,6 +165,7 @@ class JSONReport:
             json.dump(
                 json_report,
                 f,
+                default=str,
                 indent=self.config.option.json_report_indent,
             )
             self.report_size = f.tell()
