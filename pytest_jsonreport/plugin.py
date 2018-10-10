@@ -36,6 +36,10 @@ class JSONReport:
         return not self.config.option.json_report_no_streams
 
     @property
+    def want_logs(self):
+        return not self.config.option.json_report_no_logs
+
+    @property
     def want_summary(self):
         return self.config.option.json_report_summary
 
@@ -225,6 +229,8 @@ class JSONReport:
                 when_ == when and key in ['stdout', 'stderr']}
 
     def json_log(self, item, when):
+        if not self.want_logs:
+            return {}
         try:
             return {'log': item._json_log[when]}
         except KeyError:
@@ -305,6 +311,7 @@ def pytest_addoption(parser):
     file_help_text = 'target path to save JSON report'
     no_traceback_help_text = 'don\'t include tracebacks in JSON report'
     no_stream_help_text = 'don\'t include stdout/stderr output in JSON report'
+    no_log_help_text = 'don\'t include log output in JSON report'
     summary_help_text = 'just create a summary without per-test details'
     indent_help_text = 'pretty-print JSON with specified indentation level'
     group = parser.getgroup('jsonreport', 'reporting test results as JSON')
@@ -317,6 +324,8 @@ def pytest_addoption(parser):
                     action='store_true', help=no_stream_help_text)
     group.addoption('--json-report-summary', default=False,
                     action='store_true', help=summary_help_text)
+    group.addoption('--json-report-no-logs', default=False,
+                    action='store_true', help=no_log_help_text)
     group.addoption('--json-report-indent', type=int, help=indent_help_text)
     parser.addini('json_report_file', file_help_text)
 
