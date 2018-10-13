@@ -30,6 +30,7 @@ Available options:
 | `--json-report-file=JSON_REPORT_FILE` | Target path to save JSON report |
 | `--json-report-no-traceback` | Don't include tracebacks in JSON report |
 | `--json-report-no-streams` | Don't include stdout/stderr output in JSON report |
+| `--json-report-no-logs` | Don't include log output in JSON report |
 | `--json-report-summary` |  Just create a summary without per-test details |
 | `--json-report-indent=JSON_REPORT_INDENT` |  Pretty-print JSON with specified indentation level |
 

@@ -294,6 +294,21 @@ def test_no_streams(make_json):
     assert 'stderr' not in call
 
 
+def test_no_logs(make_json):
+    data = make_json("""
+        import logging
+        def test_foo():
+            logging.error('log error')
+    """, ['--json-report'])
+    assert 'log' in data['tests'][0]['call']
+    data = make_json("""
+        import logging
+        def test_foo():
+            logging.error('log error')
+    """, ['--json-report', '--json-report-no-logs'])
+    assert 'log' not in data['tests'][0]['call']
+
+
 def test_summary_only(make_json):
     data = make_json(FILE, ['--json-report', '--json-report-summary'])
     assert 'summary' in data
