@@ -92,6 +92,10 @@ def json_data(make_json):
 
 @pytest.fixture
 def tests(json_data):
+    return make_tests(json_data)
+
+
+def make_tests(json_data):
     return {test['domain'][5:]: test for test in json_data['tests']}
 
 
@@ -277,19 +281,19 @@ def test_report_crash_and_traceback(tests):
 
 def test_no_traceback(make_json):
     data = make_json(FILE, ['--json-report', '--json-report-no-traceback'])
-    tests_ = tests(data)
+    tests_ = make_tests(data)
     assert 'traceback' not in tests_['fail_nested']['call']
 
 
 def test_pytest_no_traceback(make_json):
     data = make_json(FILE, ['--json-report', '--tb=no'])
-    tests_ = tests(data)
+    tests_ = make_tests(data)
     assert 'traceback' not in tests_['fail_nested']['call']
 
 
 def test_no_streams(make_json):
     data = make_json(FILE, ['--json-report', '--json-report-no-streams'])
-    call = tests(data)['fail_with_fixture']['call']
+    call = make_tests(data)['fail_with_fixture']['call']
     assert 'stdout' not in call
     assert 'stderr' not in call
 
@@ -349,7 +353,7 @@ def test_json_metadata(make_json):
             json_metadata['a'] = object()
 
     """)
-    tests_ = tests(data)
+    tests_ = make_tests(data)
     assert tests_['metadata1']['metadata'] == {'x': 'foo', 'y': [1, {'a': 2}]}
     assert tests_['metadata2']['metadata'] == {'z': 1}
     assert 'metadata' not in tests_['unused_metadata']
