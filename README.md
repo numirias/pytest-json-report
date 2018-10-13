@@ -306,10 +306,10 @@ A list of warnings that occurred during the session. (See the [pytest docs on wa
 
 | Key | Description |
 | --- | --- |
-| `code` | Warning code. |
-| `path` | Absolute path to the associated file. |
-| `nodeid` | Associated node ID. |
+| `filename` | File name. |
+| `lineno` | Line number. |
 | `message` | Warning message. |
+| `when` | When the warning was captured. (`"config"`, `"collect"` or `"runtest"` as listed [here](https://docs.pytest.org/en/latest/reference.html#_pytest.hookspec.pytest_warning_captured)) |
 
 #### Example
 

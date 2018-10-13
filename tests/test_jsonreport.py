@@ -371,8 +371,13 @@ def test_warnings(make_json):
                 assert True
     """)['warnings']
     assert len(warnings) == 1
-    assert set(warnings[0]) == {'code', 'path', 'nodeid', 'message'}
-    assert warnings[0]['nodeid'] == 'test_warnings.py::TestFoo'
+    assert set(warnings[0]) == {
+        'filename', 'lineno', 'message', 'when'
+    }
+    assert warnings[0]['filename'].endswith('.py')
+    assert warnings[0]['lineno'] == 1
+    assert warnings[0]['when'] == 'collect'
+    assert '__init__' in warnings[0]['message']
 
 
 def test_process_report(testdir, make_json):

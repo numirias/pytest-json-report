@@ -124,13 +124,15 @@ class JSONReport:
         # be processed by another script/plugin.
         self.report = json_report
 
-    def pytest_logwarning(self, code, fslocation, message, nodeid):
-        self.warnings.append({
-            'code': code,
-            'path': str(fslocation),
-            'nodeid': nodeid,
-            'message': message,
-        })
+    def pytest_warning_captured(self, warning_message, when):
+        # warning_message is a warnings.WarningMessage object
+        warning = {
+            'message': str(warning_message.message),
+            'when': when,
+            'filename': warning_message.filename,
+            'lineno': warning_message.lineno
+        }
+        self.warnings.append(warning)
 
     def pytest_terminal_summary(self, terminalreporter):
         terminalreporter.write_sep('-', 'JSON report')
