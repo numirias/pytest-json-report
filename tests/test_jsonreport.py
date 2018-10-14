@@ -358,7 +358,8 @@ def test_json_metadata(make_json):
     assert tests_['metadata2']['metadata'] == {'z': 1}
     assert 'metadata' not in tests_['unused_metadata']
     assert 'metadata' not in tests_['empty_metadata']
-    assert tests_['unserializable_metadata']['metadata'].startswith('{\'a\':')
+    assert tests_['unserializable_metadata']['metadata']['a'].startswith(
+        '<object')
 
 
 def test_environment_via_metadata_plugin(make_json):
