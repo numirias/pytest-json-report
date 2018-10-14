@@ -167,15 +167,20 @@ class JSONReport:
 
     def json_collector(self, report):
         """Return JSON-serializable collector node."""
+        children = []
+        for node in report.result:
+            child = {
+                'nodeid': node.nodeid,
+                'type': node.__class__.__name__,
+            }
+            child.update(self.json_location(node))
+            children.append(child)
+
         return {
             'nodeid': report.nodeid,
             # This is the outcome of the collection, not the test outcome
             'outcome': report.outcome,
-            'children': [{
-                'nodeid': node.nodeid,
-                'type': node.__class__.__name__,
-                **self.json_location(node),
-            } for node in report.result],
+            'children': children,
         }
 
     def json_location(self, node):
@@ -192,27 +197,29 @@ class JSONReport:
 
     def json_testitem(self, item):
         """Return JSON-serializable test item."""
-        return {
+        obj = {
             'nodeid': item.nodeid,
-            # Adding the location in the collector dict *and* here appears
-            # redundant, but the docs say they may be different
-            **self.json_location(item),
             # item.keywords is actually a dict, but we just save the keys
             'keywords': list(item.keywords),
             # The outcome will be overridden in case of failure
             'outcome': 'passed',
         }
+        # Adding the location in the collector dict *and* here appears
+        # redundant, but the docs say they may be different
+        obj.update(self.json_location(item))
+        return obj
 
     def json_teststage(self, item, report):
         """Return JSON-serializable test stage (setup/call/teardown)."""
         stage = {
             'duration': report.duration,
             'outcome': report.outcome,
-            **self.json_crash(report),
-            **self.json_traceback(report),
-            **self.json_streams(item, report.when),
-            **self.json_log(item, report.when),
         }
+        stage.update(self.json_crash(report))
+        stage.update(self.json_traceback(report))
+        stage.update(self.json_streams(item, report.when))
+        stage.update(self.json_log(item, report.when))
+
         if report.longreprtext:
             stage['longrepr'] = report.longreprtext
         return stage
@@ -282,7 +289,7 @@ class JSONReport:
 class LoggingHandler(logging.Handler):
 
     def __init__(self):
-        super().__init__()
+        super(LoggingHandler, self).__init__()
         self.records = []
 
     def emit(self, record):
