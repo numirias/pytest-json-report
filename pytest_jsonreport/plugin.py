@@ -152,11 +152,6 @@ class JSONReport:
                 continue
             if metadata == {}:
                 continue
-            try:
-                json.dumps(metadata)
-            except TypeError:
-                # Metadata isn't JSON-serializable, so make it a str
-                metadata = str(metadata)
             test['metadata'] = metadata
 
     def save_report(self, json_report):
