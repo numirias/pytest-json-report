@@ -3,7 +3,6 @@ from contextlib import contextmanager
 import json
 import logging
 import time
-
 import pytest
 
 
@@ -90,22 +89,6 @@ class JSONReport:
     def pytest_runtest_teardown(self, item):
         with self.capture_log(item, 'teardown'):
             yield
-
-    @pytest.hookimpl(hookwrapper=True)
-    def pytest_runtest_makereport(self, item, call):
-        outcome = yield
-        report = outcome.get_result()
-        try:
-            test = self.tests[item]
-        except KeyError:
-            test = self.json_testitem(item)
-            self.tests[item] = test
-        # Update total test outcome, if necessary. The total outcome can be
-        # different from the outcome of the setup/call/teardown stage.
-        outcome = self.config.hook.pytest_report_teststatus(report=report)[0]
-        if outcome not in ['passed', '']:
-            test['outcome'] = outcome
-        test[call.when] = self.json_teststage(item, report)
 
     def pytest_sessionfinish(self, session):
         self.add_metadata()
@@ -195,48 +178,50 @@ class JSONReport:
             'domain': domain,
         }
 
-    def json_testitem(self, item):
+    def json_testitem(self, report, outcome):
         """Return JSON-serializable test item."""
         obj = {
-            'nodeid': item.nodeid,
+            'nodeid': report.nodeid,
             # item.keywords is actually a dict, but we just save the keys
-            'keywords': list(item.keywords),
-            # The outcome will be overridden in case of failure
-            'outcome': 'passed',
+            'keywords': list(report.keywords),
+            'outcome': outcome,
         }
         # Adding the location in the collector dict *and* here appears
         # redundant, but the docs say they may be different
-        obj.update(self.json_location(item))
+        obj.update(self.json_location(report))
         return obj
 
-    def json_teststage(self, item, report):
+    def json_teststage(self, report, outcome):
         """Return JSON-serializable test stage (setup/call/teardown)."""
         stage = {
             'duration': report.duration,
-            'outcome': report.outcome,
+            'outcome': outcome,
         }
         stage.update(self.json_crash(report))
         stage.update(self.json_traceback(report))
-        stage.update(self.json_streams(item, report.when))
-        stage.update(self.json_log(item, report.when))
+        stage.update(self.json_streams(report))
+        stage.update(self.json_log(report))
 
         if report.longreprtext:
             stage['longrepr'] = report.longreprtext
         return stage
 
-    def json_streams(self, item, when):
+    def json_streams(self, report):
         """Return JSON-serializable output of the standard streams."""
         if not self.want_streams:
             return {}
-        return {key: val for when_, key, val in item._report_sections if
-                when_ == when and key in ['stdout', 'stderr']}
+        try:
+            return {key: val for when_, key, val in report._report_sections if
+                    when_ == report.when and key in ['stdout', 'stderr']}
+        except AttributeError:
+            return {}
 
-    def json_log(self, item, when):
+    def json_log(self, report):
         if not self.want_logs:
             return {}
         try:
-            return {'log': item._json_log[when]}
-        except KeyError:
+            return {'log': report._json_log[report.when]}
+        except (KeyError, AttributeError):
             return {}
 
     def json_crash(self, report):
@@ -284,6 +269,45 @@ class JSONReport:
             metadata = {}
             request.node._json_metadata = metadata
         return metadata
+
+    def pytest_runtest_logreport(self, report):
+        if report.passed:
+            self.append_passed(report)
+        elif report.failed:
+            self.append_failed(report)
+        elif report.skipped:
+            self.append_skipped(report)
+
+    def append_passed(self, report):
+        if report.when == 'call':
+            if hasattr(report, "wasxfail"):
+                self._make_report(report, 'XPassed')
+            else:
+                self._make_report(report, 'Passed')
+
+    def append_failed(self, report):
+        if getattr(report, 'when', None) == "call":
+            if hasattr(report, "wasxfail"):
+                # pytest < 3.0 marked xpasses as failures
+                self._make_report(report, 'XPassed')
+            else:
+                self._make_report(report, 'Failed')
+        else:
+            self._make_report(report, 'Error')
+
+    def append_skipped(self, report):
+        if hasattr(report, "wasxfail"):
+            self._make_report(report, 'XFailed')
+        else:
+            self._make_report(report, 'Skipped')
+
+    def _make_report(self, report, outcome):
+        try:
+            test = self.tests[report]
+        except KeyError:
+            test = self.json_testitem(report, outcome)
+            self.tests[report] = test
+        test[report.when] = self.json_teststage(report, outcome)
 
 
 class LoggingHandler(logging.Handler):
@@ -334,11 +358,13 @@ def pytest_addoption(parser):
 
 
 def pytest_configure(config):
-    if not config.option.json_report:
-        return
-    plugin = JSONReport(config)
-    config._json_report = plugin
-    config.pluginmanager.register(plugin)
+    if not hasattr(config, 'slaveinput'):
+        # prevent opening htmlpath on slave nodes (xdist)
+        if not config.option.json_report:
+            return
+        plugin = JSONReport(config)
+        config._json_report = plugin
+        config.pluginmanager.register(plugin)
 
 
 def pytest_unconfigure(config):
