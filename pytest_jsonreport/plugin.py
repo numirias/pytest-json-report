@@ -281,25 +281,25 @@ class JSONReport:
     def append_passed(self, report):
         if report.when == 'call':
             if hasattr(report, "wasxfail"):
-                self._make_report(report, 'XPassed')
+                self._make_report(report, 'xpassed')
             else:
-                self._make_report(report, 'Passed')
+                self._make_report(report, 'passed')
 
     def append_failed(self, report):
         if getattr(report, 'when', None) == "call":
             if hasattr(report, "wasxfail"):
                 # pytest < 3.0 marked xpasses as failures
-                self._make_report(report, 'XPassed')
+                self._make_report(report, 'xpassed')
             else:
-                self._make_report(report, 'Failed')
+                self._make_report(report, 'failed')
         else:
-            self._make_report(report, 'Error')
+            self._make_report(report, 'error')
 
     def append_skipped(self, report):
         if hasattr(report, "wasxfail"):
-            self._make_report(report, 'XFailed')
+            self._make_report(report, 'xfailed')
         else:
-            self._make_report(report, 'Skipped')
+            self._make_report(report, 'skipped')
 
     def _make_report(self, report, outcome):
         try:
