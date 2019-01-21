@@ -380,6 +380,14 @@ def test_no_logs(make_json):
     assert 'log' not in data['tests'][0]['call']
 
 
+def test_no_keywords(make_json):
+    data = make_json()
+    assert 'keywords' in data['tests'][0]
+
+    data = make_json(args=['--json-report', '--json-report-omit=keywords'])
+    assert 'keywords' not in data['tests'][0]
+
+
 def test_direct_invocation(testdir):
     test_file = testdir.makepyfile("""
         def test_foo():
