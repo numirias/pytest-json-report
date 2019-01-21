@@ -182,8 +182,7 @@ class JSONReport(JSONReportBase):
             if self._json_collectors:
                 json_report['collectors'] = self._json_collectors
             json_report['tests'] = list(self._json_tests.values())
-            # TODO Write test for warnings omission
-            if self._json_warnings and not self._must_omit('warnings'):
+            if self._json_warnings:
                 json_report['warnings'] = self._json_warnings
 
         self._config.hook.pytest_json_modifyreport(json_report=json_report)
@@ -204,8 +203,9 @@ class JSONReport(JSONReportBase):
             self._report_size = f.tell()
 
     def pytest_warning_captured(self, warning_message, when):
-        self._json_warnings.append(
-            serialize.make_warning(warning_message, when))
+        if not self._must_omit('warnings'):
+            self._json_warnings.append(
+                serialize.make_warning(warning_message, when))
 
     def pytest_terminal_summary(self, terminalreporter):
         terminalreporter.write_sep('-', 'JSON report')

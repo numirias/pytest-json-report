@@ -398,6 +398,16 @@ def test_no_collectors(make_json, num_processes):
     assert 'collectors' not in data
 
 
+def test_no_warnings(make_json, num_processes):
+    assert 'warnings' not in make_json("""
+        class TestFoo:
+            def __init__(self):
+                pass
+            def test_foo(self):
+                assert True
+    """, args=['--json-report', '--json-report-omit=warnings'])
+
+
 def test_direct_invocation(testdir):
     test_file = testdir.makepyfile("""
         def test_foo():
