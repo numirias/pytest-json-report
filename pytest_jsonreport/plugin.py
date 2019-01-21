@@ -179,7 +179,7 @@ class JSONReport(JSONReportBase):
             summary=serialize.make_summary(self._json_tests),
         )
         if not self._config.option.json_report_summary:
-            if self._json_collectors:  # TODO Write test
+            if self._json_collectors:
                 json_report['collectors'] = self._json_collectors
             json_report['tests'] = list(self._json_tests.values())
             # TODO Write test for warnings omission
