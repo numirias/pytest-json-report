@@ -41,7 +41,7 @@ def make_testitem(nodeid, keywords, location):
         # The outcome will be overridden in case of failure
         'outcome': 'passed',
     }
-    if keywords:  # TODO Test keyword omission
+    if keywords:
         item['keywords'] = keywords
     return item
 
