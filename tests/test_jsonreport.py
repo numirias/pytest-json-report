@@ -1,115 +1,9 @@
-import json
 import logging
 import sys
 import pytest
 
 from pytest_jsonreport.plugin import JSONReport
-
-
-# Some test cases borrowed from github.com/mattcl/pytest-json
-FILE = """
-from __future__ import print_function
-import sys
-import pytest
-
-
-@pytest.fixture
-def setup_teardown_fixture(request):
-    print('setup')
-    print('setuperr', file=sys.stderr)
-    def fn():
-        print('teardown')
-        print('teardownerr', file=sys.stderr)
-    request.addfinalizer(fn)
-
-@pytest.fixture
-def fail_setup_fixture(request):
-    assert False
-
-@pytest.fixture
-def fail_teardown_fixture(request):
-    def fn():
-        assert False
-    request.addfinalizer(fn)
-
-
-def test_pass():
-    assert True
-
-def test_fail_with_fixture(setup_teardown_fixture):
-    print('call')
-    print('callerr', file=sys.stderr)
-    assert False
-
-@pytest.mark.xfail(reason='testing xfail')
-def test_xfail():
-    assert False
-
-@pytest.mark.xfail(reason='testing xfail')
-def test_xfail_but_passing():
-    assert True
-
-def test_fail_during_setup(fail_setup_fixture):
-    assert True
-
-def test_fail_during_teardown(fail_teardown_fixture):
-    assert True
-
-@pytest.mark.skipif(True, reason='testing skip')
-def test_skip():
-    assert False
-
-def test_fail_nested():
-    def baz(o=1):
-        c = 3
-        return 2 - c - None
-    def bar(m, n=5):
-        b = 2
-        print(m)
-        print('bar')
-        return baz()
-    def foo():
-        a = 1
-        print('foo')
-        v = [bar(x) for x in range(3)]
-        return v
-    foo()
-
-@pytest.mark.parametrize('x', [1, 2])
-def test_parametrized(x):
-    assert x == 1
-"""
-
-
-@pytest.fixture
-def misc_testdir(testdir):
-    testdir.makepyfile(FILE)
-    return testdir
-
-
-@pytest.fixture
-def json_data(make_json):
-    return make_json()
-
-
-@pytest.fixture
-def tests(json_data):
-    return make_tests(json_data)
-
-
-def make_tests(json_data):
-    return {test['domain'][5:]: test for test in json_data['tests']}
-
-
-@pytest.fixture
-def make_json(testdir):
-    def func(content=FILE, args=['-vv', '--json-report'], path='.report.json'):
-        testdir.makepyfile(content)
-        testdir.runpytest(*args)
-        with open(str(testdir.tmpdir / path)) as f:
-            data = json.load(f)
-        return data
-    return func
+from .conftest import tests_only, FILE
 
 
 def test_arguments_in_help(misc_testdir):
@@ -154,26 +48,34 @@ def test_create_report_file_priority(misc_testdir):
     assert (misc_testdir.tmpdir / 'arg.json').exists()
 
 
-def test_report_keys(make_json):
+def test_report_keys(num_processes, make_json):
     data = make_json()
-    assert set(data) == set([
+    keys = set([
         'created', 'duration', 'environment', 'collectors', 'tests', 'summary',
         'root', 'exitcode'
     ])
+    if num_processes > 0:
+        # xdist only reports failing collectors
+        keys.remove('collectors')
+    assert set(data) == keys
     assert isinstance(data['created'], float)
     assert isinstance(data['duration'], float)
     assert data['root'].startswith('/')
     assert data['exitcode'] == 1
 
 
-def test_report_collectors(make_json):
-    collectors = make_json()['collectors']
+def test_report_collectors(num_processes, make_json):
+    collectors = make_json().get('collectors', [])
+    if num_processes > 0:
+        # xdist only reports failing collectors
+        assert len(collectors) == 0
+        return
     assert len(collectors) == 2
     assert all(c['outcome'] == 'passed' for c in collectors)
     assert collectors[0] == {
         'nodeid': '',
         'outcome': 'passed',
-        'children': [
+        'result': [
             {
                 'nodeid': 'test_report_collectors.py',
                 'type': 'Module',
@@ -183,40 +85,47 @@ def test_report_collectors(make_json):
     assert {
         'nodeid': 'test_report_collectors.py::test_pass',
         'type': 'Function',
-        'path': 'test_report_collectors.py',
         'lineno': 25,
-        'domain': 'test_pass',
-    } in collectors[1]['children']
+    } in collectors[1]['result']
 
 
-def test_report_failed_collector(make_json):
+def test_report_failed_collector(num_processes, make_json):
     data = make_json("""
         syntax error
         def test_foo():
             assert True
     """)
+
     collectors = data['collectors']
     assert data['tests'] == []
-    assert collectors[0]['outcome'] == 'passed'
-    assert collectors[1]['outcome'] == 'failed'
-    assert collectors[1]['children'] == []
-    assert 'longrepr' in collectors[1]
+    if num_processes == 0:
+        assert collectors[0]['outcome'] == 'passed'
+        assert collectors[1]['outcome'] == 'failed'
+        assert collectors[1]['result'] == []
+        assert 'longrepr' in collectors[1]
+    else:
+        # xdist only reports failing collectors
+        assert collectors[0]['outcome'] == 'failed'
+        assert collectors[0]['result'] == []
+        assert 'longrepr' in collectors[0]
 
 
-def test_report_failed_collector2(make_json):
+def test_report_failed_collector2(num_processes, make_json):
     data = make_json("""
         import nonexistent
         def test_foo():
             pass
     """)
     collectors = data['collectors']
-    assert collectors[1]['longrepr'].startswith('ImportError')
+    # xdist only reports failing collectors
+    idx = 1 if num_processes == 0 else 0
+    assert collectors[idx]['longrepr'].startswith('ImportError')
 
 
 def test_report_item_keys(tests):
-    assert set(tests['pass']) == set(['nodeid', 'path', 'lineno', 'domain',
-                                      'outcome', 'keywords', 'setup', 'call',
-                                      'teardown'])
+    assert set(tests['pass']) == set([
+        'nodeid', 'lineno', 'outcome', 'keywords', 'setup', 'call',
+        'teardown'])
 
 
 def test_report_outcomes(tests):
@@ -285,37 +194,22 @@ def test_report_crash_and_traceback(tests):
 
 
 def test_no_traceback(make_json):
-    data = make_json(FILE, ['--json-report', '--json-report-no-traceback'])
-    tests_ = make_tests(data)
+    data = make_json(FILE, ['--json-report', '--json-report-omit=traceback'])
+    tests_ = tests_only(data)
     assert 'traceback' not in tests_['fail_nested']['call']
 
 
 def test_pytest_no_traceback(make_json):
     data = make_json(FILE, ['--json-report', '--tb=no'])
-    tests_ = make_tests(data)
+    tests_ = tests_only(data)
     assert 'traceback' not in tests_['fail_nested']['call']
 
 
 def test_no_streams(make_json):
-    data = make_json(FILE, ['--json-report', '--json-report-no-streams'])
-    call = make_tests(data)['fail_with_fixture']['call']
+    data = make_json(FILE, ['--json-report', '--json-report-omit=streams'])
+    call = tests_only(data)['fail_with_fixture']['call']
     assert 'stdout' not in call
     assert 'stderr' not in call
-
-
-def test_no_logs(make_json):
-    data = make_json("""
-        import logging
-        def test_foo():
-            logging.error('log error')
-    """, ['--json-report'])
-    assert 'log' in data['tests'][0]['call']
-    data = make_json("""
-        import logging
-        def test_foo():
-            logging.error('log error')
-    """, ['--json-report', '--json-report-no-logs'])
-    assert 'log' not in data['tests'][0]['call']
 
 
 def test_summary_only(make_json):
@@ -357,14 +251,27 @@ def test_json_metadata(make_json):
         def test_unserializable_metadata(json_metadata):
             json_metadata['a'] = object()
 
+        import pytest
+        @pytest.fixture
+        def stage(json_metadata):
+            json_metadata['a'] = 1
+            yield
+            json_metadata['c'] = 3
+
+        def test_multi_stage_metadata(json_metadata, stage):
+            json_metadata['b'] = 2
     """)
-    tests_ = make_tests(data)
+    tests_ = tests_only(data)
     assert tests_['metadata1']['metadata'] == {'x': 'foo', 'y': [1, {'a': 2}]}
     assert tests_['metadata2']['metadata'] == {'z': 1}
     assert 'metadata' not in tests_['unused_metadata']
     assert 'metadata' not in tests_['empty_metadata']
-    assert tests_['unserializable_metadata']['metadata']['a'].startswith(
-        '<object')
+    assert 'metadata' not in tests_['unserializable_metadata']
+    assert len(data['warnings']) == 1 and (
+        'test_unserializable_metadata is not JSON-serializable' in
+        data['warnings'][0]['message'])
+    assert \
+        tests_['multi_stage_metadata']['metadata'] == {'a': 1, 'b': 2, 'c': 3}
 
 
 def test_environment_via_metadata_plugin(make_json):
@@ -446,6 +353,7 @@ def test_logging(make_json):
             except (RuntimeError, TypeError): # TypeError is raised in Py 2.7
                 logging.getLogger().debug('log %s', 'debug', exc_info=True)
     """, ['--json-report', '--log-level=DEBUG'])
+
     test = data['tests'][0]
     assert test['setup']['log'][0]['msg'] == 'log info'
     assert test['call']['log'][0]['msg'] == 'log error'
@@ -454,6 +362,22 @@ def test_logging(make_json):
 
     record = logging.makeLogRecord(test['call']['log'][1])
     assert record.getMessage() == record.msg == 'log debug'
+
+
+def test_no_logs(make_json):
+    data = make_json("""
+        import logging
+        def test_foo():
+            logging.error('log error')
+    """, ['--json-report'])
+    assert 'log' in data['tests'][0]['call']
+
+    data = make_json("""
+        import logging
+        def test_foo():
+            logging.error('log error')
+    """, ['--json-report', '--json-report-omit=log'])
+    assert 'log' not in data['tests'][0]['call']
 
 
 def test_direct_invocation(testdir):
@@ -465,3 +389,12 @@ def test_direct_invocation(testdir):
     res = pytest.main([test_file.strpath], plugins=[plugin])
     assert res == 0
     assert plugin.report['exitcode'] == 0
+    assert plugin.report['summary']['total'] == 1
+
+
+def test_xdist(make_json, match_reports):
+    r1 = make_json(FILE, ['--json-report'])
+    r2 = make_json(FILE, ['--json-report', '-n=1'])
+    r3 = make_json(FILE, ['--json-report', '-n=4'])
+    assert match_reports(r1, r2)
+    assert match_reports(r2, r3)
