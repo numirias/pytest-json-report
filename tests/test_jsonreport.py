@@ -388,6 +388,16 @@ def test_no_keywords(make_json):
     assert 'keywords' not in data['tests'][0]
 
 
+def test_no_collectors(make_json, num_processes):
+    data = make_json()
+    if num_processes == 0:
+        # xdist only reports failing collectors
+        assert 'collectors' in data
+
+    data = make_json(args=['--json-report', '--json-report-omit=collectors'])
+    assert 'collectors' not in data
+
+
 def test_direct_invocation(testdir):
     test_file = testdir.makepyfile("""
         def test_foo():
