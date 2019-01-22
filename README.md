@@ -4,38 +4,132 @@
 [![PyPI Version](https://img.shields.io/pypi/v/pytest-json-report.svg)](https://pypi.python.org/pypi/pytest-json-report)
 [![Python Versions](https://img.shields.io/pypi/pyversions/pytest-json-report.svg)](https://pypi.python.org/pypi/pytest-json-report)
 
-This pytest plugin creates test reports as JSON. This makes it easy to process test results.
+This pytest plugin creates test reports as JSON. This makes it easy to process test results in other applications.
 
-It can report a summary, test details, captured output, logs, exception tracebacks and more. Additionally, you can use the available fixtures and hooks to [add metadata](#metadata) and customize the report as you like.
+It can report a summary, test details, captured output, logs, exception tracebacks and more. Additionally, you can use the available fixtures and hooks to [add metadata](#metadata) and [customize](#modifying-the-report) the report as you like.
+
+## Table of contents
+
+* [Installation](#installation)
+* [Options](#options)
+* [Usage](#usage)
+   * [Metadata](#metadata)
+   * [Modifying the report](#modifying-the-report)
+   * [Direct invocation](#direct-invocation)
+* [Format](#format)
+   * [Summary](#summary)
+   * [Environment](#environment)
+   * [Collectors](#collectors)
+   * [Tests](#tests)
+   * [Test stage](#test-stage)
+   * [Log](#log)
+   * [Warnings](#warnings)
+* [Related tools](#related-tools)
 
 ## Installation
 
 ```
 pip install pytest-json-report --upgrade 
 ```
-## Usage
 
-Just run pytest with `--json-report`. The report is saved in `.report.json` by default.
-
-```
-$ pytest -v --json-report
-$ cat .report.json
-{"created": 1518371686.7981803, ... "tests":[{"nodeid": "test_foo.py", "outcome": "passed", ...}, ...]}
-```
-Available options:
+## Options
 
 | Option | Description |
 | --- | --- |
 | `--json-report` | Create JSON report |
-| `--json-report-file=JSON_REPORT_FILE` | Target path to save JSON report |
-| `--json-report-no-traceback` | Don't include tracebacks in JSON report |
-| `--json-report-no-streams` | Don't include stdout/stderr output in JSON report |
-| `--json-report-no-logs` | Don't include log output in JSON report |
-| `--json-report-summary` |  Just create a summary without per-test details |
-| `--json-report-indent=JSON_REPORT_INDENT` |  Pretty-print JSON with specified indentation level |
+| `--json-report-file=PATH` | Target path to save JSON report (use "none" to not save the report) |
+| `--json-report-summary` | Just create a summary without per-test details |
+| `--json-report-omit=FIELD_LIST` | List of fields to omit in the report (choose from: `collectors`, `log`, `traceback`, `streams`, `warnings`, `keywords`) |
+| `--json-report-indent=LEVEL` | Pretty-print JSON with specified indentation level |
 
+## Usage
 
-If your report files are getting uncomfortably large, try `--json-report-no-streams` or `--json-report-summary`.
+Just run pytest with `--json-report`. The report is saved in `.report.json` by default.
+
+```bash
+$ pytest --json-report -v tests/
+$ cat .report.json
+{"created": 1518371686.7981803, ... "tests":[{"nodeid": "test_foo.py", "outcome": "passed", ...}, ...]}
+```
+
+If you just need to know how many tests passed or failed and don't care about details, you can produce a summary only:
+
+```bash
+$ pytest --json-report --json-report-summary
+```
+
+Many fields can be omitted to keep the report size small. E.g., this will leave out keywords and stdout/stderr output:
+
+```bash
+$ pytest --json-report --json-report-omit keywords streams
+```
+
+If you don't like to have the report saved, you can specify `none` as the target file name:
+
+```bash
+$ pytest --json-report --json-report-file none
+```
+
+### Metadata
+
+You can add your own metadata to a test item by using the `json_metadata` test fixture:
+
+```python
+def test_something(json_metadata):
+    json_metadata['foo'] = {"some": "thing"}
+    json_metadata['bar'] = 123
+```
+
+Also, you could add metadata using [pytest-metadata's `--metadata` switch](https://github.com/pytest-dev/pytest-metadata#additional-metadata) which will add metadata to the report's `environment` section, but not to a specific test item. You need to make sure all your metadata is JSON-serializable.
+
+### Modifying the report
+
+You can modify the entire report before it's saved by using the `pytest_json_modifyreport` hook.
+
+Just implement the hook in your `conftest.py`, e.g.:
+
+```python
+def pytest_json_modifyreport(json_report):
+    # Add a key to the report
+    json_report['foo'] = 'bar'
+    # Delete the summary from the report
+    del json_report['summary']
+```
+
+After `pytest_sessionfinish`, the report object is also directly available to script via `config._json_report.report`. So you can access it using some built-in hook:
+
+```python
+def pytest_sessionfinish(session):
+    report = session.config._json_report
+    print(report['exitcode'])
+    ...
+```
+
+### Direct invocation
+
+You can also use the plugin when invoking `pytest.main()` directly from code:
+
+```python
+import pytest
+from pytest_jsonreport.plugin import JSONReport
+
+plugin = JSONReport()
+pytest.main(['test_foo.py'], plugins=[plugin])
+
+```
+
+You can then access the `report` object:
+
+```python
+print(plugin.report)
+```
+
+And save the report manually:
+
+```python
+plugin.save_report('/tmp/my_report.json')
+```
+
 
 ## Format
 
@@ -49,9 +143,9 @@ The JSON report contains metadata of the session, a summary, collectors, tests a
 | `root` | Absolute root path from which the session was started. |
 | `environment` | [Environment](#environment) entry. |
 | `summary` | [Summary](#summary) entry. |
-| `collectors` | [Collectors](#collectors) entry. (absent if `--json-report-summary`)  |
+| `collectors` | [Collectors](#collectors) entry. (absent if `--json-report-summary` or if no collectors)  |
 | `tests` | [Tests](#tests) entry. (absent if `--json-report-summary`)  |
-| `warnings` | [Warnings](#warnings) entry. (absent if `--json-report-summary` or if no warnings occurred)  |
+| `warnings` | [Warnings](#warnings) entry. (absent if `--json-report-summary` or if no warnings)  |
 
 #### Example
 
@@ -75,7 +169,7 @@ Number of outcomes per category and the total number of test items.
 
 | Key | Description |
 | --- | --- |
-| *`outcome`* | Number of tests with that outcome. (absent if number is 0) |
+| `<outcome>` | Number of tests with that outcome. (absent if number is 0) |
 |  `total` | Total number of tests. |
 
 #### Example
@@ -120,14 +214,22 @@ The environment section is provided by [pytest-metadata](https://github.com/pyte
 
 ### Collectors
 
-A list of collector nodes.
+A list of collector nodes. These are useful to check what tests are available without running them, or to debug an error during test discovery.
 
 | Key | Description |
 | --- | --- |
-| `nodeid` | ID of the test node. ([See docs](https://docs.pytest.org/en/latest/example/markers.html#node-id)) The root node has an empty node ID. |
+| `nodeid` | ID of the collector node. ([See docs](https://docs.pytest.org/en/latest/example/markers.html#node-id)) The root node has an empty node ID. |
 | `outcome` | Outcome of the collection. (Not the test outcome!) |
-| `children` | Children of the collector node which are either other collectors or test nodes. |
-| `longrepr` | Representation of the error. (absent if no error occurred) |
+| `result` | Nodes collected by the collector. |
+| `longrepr` | Representation of the collection error. (absent if no error occurred) |
+
+The `result` is a list of the collected nodes:
+
+| Key | Description |
+| --- | --- |
+| `nodeid` | ID of the node. |
+| `type` | Type of the collected node. |
+| `lineno` | Line number. (absent if not applicable) |
 
 #### Example
 
@@ -136,7 +238,7 @@ A list of collector nodes.
     {
         "nodeid": "",
         "outcome": "passed",
-        "children": [
+        "result": [
             {
                 "nodeid": "test_foo.py",
                 "type": "Module"
@@ -146,13 +248,11 @@ A list of collector nodes.
     {
         "nodeid": "test_foo.py",
         "outcome": "passed",
-        "children": [
+        "result": [
             {
                 "nodeid": "test_foo.py::test_pass",
                 "type": "Function",
-                "path": "test_foo.py",
                 "lineno": 24,
-                "domain": "test_pass"
             },
             ...
         ]
@@ -160,7 +260,7 @@ A list of collector nodes.
     {
         "nodeid": "test_bar.py",
         "outcome": "failed",
-        "children": [],
+        "result": [],
         "longrepr": "/usr/lib/python3.6 ... invalid syntax"
     },
     ...
@@ -174,13 +274,11 @@ A list of test nodes. Each completed test stage produces a stage object (`setup`
 | Key | Description |
 | --- | --- |
 | `nodeid` | ID of the test node. |
-| `path` | Relative path to the test file. |
 | `lineno` | Line number where the test starts. |
-| `domain` | Name of the test item. |
 | `keywords` | List of keywords and markers associated with the test. |
 | `outcome` | Outcome of the test run. |
 | `{setup, call, teardown}` | [Test stage](#test-stage) entry. To find the error in a failed test you need to check all stages. (absent if stage didn't run) |
-| `metadata` | [Metadata](#metadata) item. |
+| `metadata` | [Metadata](#metadata) item. (absent if no metadata) |
 
 #### Example
 
@@ -188,9 +286,7 @@ A list of test nodes. Each completed test stage produces a stage object (`setup`
 [
     {
         "nodeid": "test_foo.py::test_fail",
-        "path": "test_foo.py",
         "lineno": 50,
-        "domain": "test_fail",
         "keywords": [
             "test_fail",
             "test_foo.py",
@@ -219,9 +315,9 @@ A test stage item.
 | `outcome` | Outcome of the test stage. (can be different from the overall test outcome) |
 | `crash` | Crash entry. (absent if no error occurred) |
 | `traceback` | List of traceback entries. (absent if no error occurred) |
-| `stdout` | Standard output. (absent if no stdout output or `--json-report-no-streams`) |
-| `stderr` | Standard error. (absent if no stderr output or `--json-report-no-streams`) |
-| `log` | [Log](#log) entry. |
+| `stdout` | Standard output. (absent if none available) |
+| `stderr` | Standard error. (absent if none available) |
+| `log` | [Log](#log) entry. (absent if none available) |
 | `longrepr` | Representation of the error. (absent if no error occurred) |
 
 #### Example
@@ -323,54 +419,6 @@ A list of warnings that occurred during the session. (See the [pytest docs on wa
         "message": "cannot collect test class 'TestFoo' because it has a __init__ constructor"
     }
 ]
-```
-
-## Metadata
-
-You can add metadata to a test item by using the `json_metadata` test fixture:
-
-```python
-def test_something(json_metadata):
-    json_metadata['foo'] = {"some": "thing"}
-```
-
-If the metadata isn't JSON-serializable, it will be converted to a string.
-
-Also, you could add metadata using [pytest-metadata's `--metadata` switch](https://github.com/pytest-dev/pytest-metadata#additional-metadata) which will add metadata to the report's `environment` section, but not to a specific test item.
-
-## Accessing the report
-
-If you wish, you can modify the entire report before it's saved by using the `pytest_json_modifyreport` hook.
-
-Just add the hook to your `conftest.py`, e.g.:
-
-```python
-def pytest_json_modifyreport(json_report):
-    # Add a key to the report
-    json_report['foo'] = 'bar'
-    # Delete the summary from the report
-    del json_report['summary']
-```
-
-After `pytest_sessionfinish`, the report object is available via `config._json_report`, so you could also access it using a standard hook (although this isn't recommended). E.g.:
-
-```python
-def pytest_sessionfinish(session):
-    code = session.config._json_report.report['exitcode']
-    ...
-```
-
-## Direct invocation
-
-You can also use the plugin when invoking `pytest.main()` directly from code:
-
-```python
-import pytest
-from pytest_jsonreport.plugin import JSONReport
-
-plugin = JSONReport()
-pytest.main(['test_foo.py'], plugins=[plugin])
-print(plugin.report)
 ```
 
 ## Related tools

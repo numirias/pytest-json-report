@@ -269,8 +269,8 @@ def pytest_addoption(parser):
         help='target path to save JSON report (use "none" to not save the '
         'report)')
     group.addoption(
-        '--json-report-omit', default=[], nargs='+', help='list of attributes '
-        'to omit in the report (choose from: collectors, log, traceback, '
+        '--json-report-omit', default=[], nargs='+', help='list of fields to '
+        'omit in the report (choose from: collectors, log, traceback, '
         'streams, warnings, keywords)')
     group.addoption(
         '--json-report-summary', default=False,
