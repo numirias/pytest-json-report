@@ -109,20 +109,16 @@ class JSONReport(JSONReportBase):
 
     def __init__(self, *args, **kwargs):
         JSONReportBase.__init__(self, *args, **kwargs)
-        # Path to save the report to
-        self._report_path = None
-        self._report_size = 0
         self._start_time = None
         self._json_tests = OrderedDict()
         self._json_collectors = []
         self._json_warnings = []
+        # List of terminal summary lines
+        self._terminal_summary = []
         self.report = None
 
     def pytest_configure(self, config):
         JSONReportBase.pytest_configure(self, config)
-        self._report_path = self._config.option.json_report_file or \
-            self._config.getini('json_report_file') or \
-            '.report.json'
 
     def pytest_sessionstart(self, session):
         self._start_time = time.time()
@@ -186,21 +182,30 @@ class JSONReport(JSONReportBase):
                 json_report['warnings'] = self._json_warnings
 
         self._config.hook.pytest_json_modifyreport(json_report=json_report)
-        self._save_report(json_report)
-        # After the session is finished, other scripts may want to use report
+        # After the session has finished, other scripts may want to use report
         # object directly
         self.report = json_report
+        path = self._config.option.json_report_file
+        if path:
+            self.save_report(path)
+        else:
+            self._terminal_summary.append('no JSON report written.')
 
-    def _save_report(self, json_report):
-        """Save the JSON report to file."""
-        with open(self._report_path, 'w') as f:
+    def save_report(self, path):
+        """Save the JSON report to `path`."""
+        json_report = self.report
+        if json_report is None:
+            warnings.warn('No report has been created yet. Nothing saved.')
+            return
+        with open(path, 'w') as f:
             json.dump(
                 json_report,
                 f,
                 default=str,
                 indent=self._config.option.json_report_indent,
             )
-            self._report_size = f.tell()
+            self._terminal_summary.append(
+                'JSON report written to: %s (%d bytes)' % (path, f.tell()))
 
     def pytest_warning_captured(self, warning_message, when):
         if self._config is None:
@@ -213,8 +218,8 @@ class JSONReport(JSONReportBase):
 
     def pytest_terminal_summary(self, terminalreporter):
         terminalreporter.write_sep('-', 'JSON report')
-        terminalreporter.write_line('report written to: %s (%d bytes)' %
-                                    (self._report_path, self._report_size))
+        for line in self._terminal_summary:
+            terminalreporter.write_line(line)
 
 
 class JSONReportWorker(JSONReportBase):
@@ -253,12 +258,16 @@ def json_metadata(request):
 
 
 def pytest_addoption(parser):
-    file_help_text = 'target path to save JSON report'
     group = parser.getgroup('jsonreport', 'reporting test results as JSON')
     group.addoption(
         '--json-report', default=False, action='store_true',
         help='create JSON report')
-    group.addoption('--json-report-file', help=file_help_text)
+    group.addoption(
+        '--json-report-file', default='.report.json',
+        # The case-insensitive string "none" will make the value None
+        type=lambda x: None if x.lower() == 'none' else x,
+        help='target path to save JSON report (use "none" to not save the '
+        'report)')
     group.addoption(
         '--json-report-omit', default=[], nargs='+', help='list of attributes '
         'to omit in the report (choose from: collectors, log, traceback, '
@@ -270,7 +279,6 @@ def pytest_addoption(parser):
     group.addoption(
         '--json-report-indent', type=int, help='pretty-print JSON with '
         'specified indentation level')
-    parser.addini('json_report_file', file_help_text)
 
 
 def pytest_configure(config):

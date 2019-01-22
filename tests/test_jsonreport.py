@@ -11,7 +11,6 @@ def test_arguments_in_help(misc_testdir):
     res.stdout.fnmatch_lines([
         '*json-report*',
         '*json-report-file*',
-        '*json_report_file*',
     ])
 
 
@@ -21,8 +20,12 @@ def test_no_report(misc_testdir):
 
 
 def test_create_report(misc_testdir):
-    misc_testdir.runpytest('--json-report')
+    res = misc_testdir.runpytest('--json-report')
     assert (misc_testdir.tmpdir / '.report.json').exists()
+
+    res.stdout.fnmatch_lines([
+        '*report written*.report.json*',
+    ])
 
 
 def test_create_report_file_from_arg(misc_testdir):
@@ -30,22 +33,11 @@ def test_create_report_file_from_arg(misc_testdir):
     assert (misc_testdir.tmpdir / 'arg.json').exists()
 
 
-def test_create_report_file_from_ini(misc_testdir):
-    misc_testdir.makeini("""
-        [pytest]
-        json_report_file = ini.json
-    """)
-    misc_testdir.runpytest('--json-report')
-    assert (misc_testdir.tmpdir / 'ini.json').exists()
-
-
-def test_create_report_file_priority(misc_testdir):
-    misc_testdir.makeini("""
-        [pytest]
-        json_report_file = ini.json
-    """)
-    misc_testdir.runpytest('--json-report', '--json-report-file=arg.json')
-    assert (misc_testdir.tmpdir / 'arg.json').exists()
+def test_create_no_report(misc_testdir):
+    res = misc_testdir.runpytest('--json-report', '--json-report-file=NONE')
+    res.stdout.fnmatch_lines([
+        '*no JSON report written*',
+    ])
 
 
 def test_report_keys(num_processes, make_json):
@@ -418,6 +410,11 @@ def test_direct_invocation(testdir):
     assert res == 0
     assert plugin.report['exitcode'] == 0
     assert plugin.report['summary']['total'] == 1
+
+    report_path = testdir.tmpdir / 'foo_report.json'
+    assert not report_path.exists()
+    plugin.save_report(str(report_path))
+    assert report_path.exists()
 
 
 def test_xdist(make_json, match_reports):

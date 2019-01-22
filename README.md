@@ -4,7 +4,7 @@
 [![PyPI Version](https://img.shields.io/pypi/v/pytest-json-report.svg)](https://pypi.python.org/pypi/pytest-json-report)
 [![Python Versions](https://img.shields.io/pypi/pyversions/pytest-json-report.svg)](https://pypi.python.org/pypi/pytest-json-report)
 
-This pytest plugin creates JSON test reports, so that the results can be processed by other applications.
+This pytest plugin creates test reports as JSON. This makes it easy to process test results.
 
 It can report a summary, test details, captured output, logs, exception tracebacks and more. Additionally, you can use the available fixtures and hooks to [add metadata](#metadata) and customize the report as you like.
 
