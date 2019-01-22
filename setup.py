@@ -1,9 +1,23 @@
+from os import path
+import sys
+
 from setuptools import setup
+
+# Open encoding isn't available for Python 2.7 (sigh)
+if sys.version_info < (3, 0):
+    from io import open
+
+
+this_directory = path.abspath(path.dirname(__file__))
+with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
+    long_description = f.read()
 
 
 setup(
     name='pytest-json-report',
     description='A pytest plugin to report test results as JSON files',
+    long_description=long_description,
+    long_description_content_type='text/markdown',
     packages=['pytest_jsonreport'],
     author='numirias',
     author_email='numirias@users.noreply.github.com',

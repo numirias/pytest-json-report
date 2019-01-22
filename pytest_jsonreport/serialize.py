@@ -46,14 +46,6 @@ def make_testitem(nodeid, keywords, location):
     return item
 
 
-def testitem_update_metadata(item, metadata):
-    item['metadata'] = metadata
-
-
-def testitem_update_outcome(item, outcome):
-    item['outcome'] = outcome
-
-
 def make_teststage(report, stdout, stderr, log, traceback):
     """Return JSON-serializable test stage (setup/call/teardown)."""
     stage = {
