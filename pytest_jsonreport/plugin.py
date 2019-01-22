@@ -203,6 +203,10 @@ class JSONReport(JSONReportBase):
             self._report_size = f.tell()
 
     def pytest_warning_captured(self, warning_message, when):
+        if self._config is None:
+            # If pytest is invoked directly from code, it may try to capture
+            # warnings before the config is set.
+            return
         if not self._must_omit('warnings'):
             self._json_warnings.append(
                 serialize.make_warning(warning_message, when))
