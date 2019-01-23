@@ -105,7 +105,7 @@ def tests_only(json_data):
 
 
 # Each test run should work with and without xdist (-n specifies workers)
-@pytest.fixture(params=[0, 1])
+@pytest.fixture(params=[0, 1, 4])
 def num_processes(request):
     return request.param
 

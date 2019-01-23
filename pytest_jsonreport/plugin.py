@@ -117,9 +117,6 @@ class JSONReport(JSONReportBase):
         self._terminal_summary = []
         self.report = None
 
-    def pytest_configure(self, config):
-        JSONReportBase.pytest_configure(self, config)
-
     def pytest_sessionstart(self, session):
         self._start_time = time.time()
 
