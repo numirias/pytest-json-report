@@ -251,7 +251,15 @@ class Hooks:
 @pytest.fixture
 def json_metadata(request):
     """Fixture to add metadata to the current test item."""
-    return request.node._json_report_extra.setdefault('metadata', {})
+    try:
+        return request.node._json_report_extra.setdefault('metadata', {})
+    except AttributeError:
+        if not request.config.option.json_report:
+            # The user didn't request a JSON report, so the plugin didn't
+            # prepare a metadata context. We return a dummy dict, so the
+            # fixture can be used as expected without causing internal errors.
+            return {}
+        raise
 
 
 def pytest_addoption(parser):

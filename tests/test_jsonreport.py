@@ -266,6 +266,18 @@ def test_json_metadata(make_json):
         tests_['multi_stage_metadata']['metadata'] == {'a': 1, 'b': 2, 'c': 3}
 
 
+def test_metadata_fixture_without_report_flag(testdir):
+    """Using the json_metadata fixture without --json-report should not raise
+    internal errors."""
+    testdir.makepyfile('''
+        def test_metadata(json_metadata):
+            json_metadata['x'] = 'foo'
+    ''')
+    res = testdir.runpytest()
+    assert res.ret == 0
+    assert not (testdir.tmpdir / '.report.json').exists()
+
+
 def test_environment_via_metadata_plugin(make_json):
     data = make_json('', ['--json-report', '--metadata', 'x', 'y'])
     assert 'Python' in data['environment']
