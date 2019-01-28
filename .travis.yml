@@ -9,6 +9,8 @@ jobs:
   - python: 3.6
     env: TOXENV=lint
 install:
-  - pip install tox-travis
+  - pip install tox-travis codecov
 script:
   - tox
+after_success:
+  - codecov
