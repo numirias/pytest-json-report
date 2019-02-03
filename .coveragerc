@@ -4,5 +4,5 @@ source = pytest_jsonreport
 
 [paths]
 source =
-   src/pytest_jsonreport
+   pytest_jsonreport
    .tox/*/lib/python*/site-packages/pytest_jsonreport
