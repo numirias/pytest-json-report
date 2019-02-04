@@ -437,3 +437,25 @@ def test_xdist(make_json, match_reports):
     r3 = make_json(FILE, ['--json-report', '-n=4'])
     assert match_reports(r1, r2)
     assert match_reports(r2, r3)
+
+
+def test_bug_31(make_json):
+    data = make_json('''
+        import pytest
+
+        FLAKY_RUNS = 0
+
+        @pytest.mark.flaky
+        def test_flaky_pass():
+            assert 1 + 1 == 2
+
+        @pytest.mark.flaky
+        def test_flaky_fail():
+            global FLAKY_RUNS
+            FLAKY_RUNS += 1
+            assert FLAKY_RUNS == 2
+    ''')
+    assert set(data['summary'].items()) == {
+        ('total', 2),
+        ('passed', 2),
+    }
