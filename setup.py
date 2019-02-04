@@ -25,7 +25,7 @@ setup(
     url='https://github.com/numirias/pytest-json-report',
     license='MIT',
     install_requires=[
-        'pytest>=3.3.2',
+        'pytest>=4.2.0',
         'pytest-metadata',
     ],
     entry_points={

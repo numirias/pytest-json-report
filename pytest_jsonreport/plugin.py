@@ -143,7 +143,8 @@ class JSONReport(JSONReportBase):
             json_testitem['metadata'] = metadata
         # Update total test outcome, if necessary. The total outcome can be
         # different from the outcome of the setup/call/teardown stage.
-        outcome = self._config.hook.pytest_report_teststatus(report=report)[0]
+        outcome = self._config.hook.pytest_report_teststatus(
+            report=report, config=self._config)[0]
         if outcome not in ['passed', '']:
             json_testitem['outcome'] = outcome
         if self._must_omit('traceback'):
