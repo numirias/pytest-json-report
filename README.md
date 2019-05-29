@@ -101,7 +101,7 @@ After `pytest_sessionfinish`, the report object is also directly available to sc
 
 ```python
 def pytest_sessionfinish(session):
-    report = session.config._json_report
+    report = session.config._json_report.report
     print(report['exitcode'])
     ...
 ```
