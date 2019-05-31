@@ -22,6 +22,8 @@ class JSONReportBase:
         # initialized without a config.
         if self._config is None:
             self._config = config
+        if not hasattr(config, '_json_report'):
+            self._config._json_report = self
         # If the user sets --tb=no, always omit the traceback from the report
         if self._config.option.tbstyle == 'no' and \
            not self._must_omit('traceback'):
@@ -163,6 +165,7 @@ class JSONReport(JSONReportBase):
             traceback,
         )
 
+    @pytest.hookimpl(tryfirst=True)
     def pytest_sessionfinish(self, session):
         json_report = serialize.make_report(
             created=time.time(),
