@@ -459,3 +459,19 @@ def test_bug_31(make_json):
         ('total', 2),
         ('passed', 2),
     }
+
+
+def test_bug_37(testdir):
+    """#37: Report is not accessible via config._json_report when pytest is run
+    from code via pytest.main().
+    """
+    test_file = testdir.makepyfile("""
+        def test_foo():
+            assert True
+    """)
+    testdir.makeconftest("""
+        def pytest_sessionfinish(session):
+            assert session.config._json_report.report['exitcode'] == 0
+    """)
+    plugin = JSONReport()
+    pytest.main([test_file.strpath], plugins=[plugin])
