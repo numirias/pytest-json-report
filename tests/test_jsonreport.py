@@ -475,3 +475,9 @@ def test_bug_37(testdir):
     """)
     plugin = JSONReport()
     pytest.main([test_file.strpath], plugins=[plugin])
+
+
+def test_bug_41(misc_testdir):
+    """#41: Create report file path if it doesn't exist."""
+    misc_testdir.runpytest('--json-report', '--json-report-file=x/report.json')
+    assert (misc_testdir.tmpdir / 'x/report.json').exists()
