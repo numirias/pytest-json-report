@@ -3,6 +3,7 @@ from collections import OrderedDict
 from contextlib import contextmanager
 import json
 import logging
+import os
 import time
 import warnings
 
@@ -198,6 +199,16 @@ class JSONReport(JSONReportBase):
         if json_report is None:
             warnings.warn('No report has been created yet. Nothing saved.')
             return
+        # Create path if it doesn't exist
+        dirname = os.path.dirname(path)
+        if dirname:
+            try:
+                os.makedirs(dirname)
+            # Mimick FileExistsError for py2.7 compatibility
+            except OSError as e:
+                import errno
+                if e.errno != errno.EEXIST:
+                    raise
         with open(path, 'w') as f:
             json.dump(
                 json_report,
