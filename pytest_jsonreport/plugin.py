@@ -84,6 +84,11 @@ class JSONReportBase:
             streams = {key: val for when_, key, val in item._report_sections if
                        when_ == report.when and key in ['stdout', 'stderr']}
             item._json_report_extra[call.when].update(streams)
+        for dict_ in self._config.hook.pytest_json_runtest_metadata(item=item,
+                                                                    call=call):
+            if not dict_:
+                continue
+            item._json_report_extra.setdefault('metadata', {}).update(dict_)
         self._validate_metadata(item)
         # Attach the JSON details to the report. If this is an xdist worker,
         # the details will be serialized and relayed with the other attributes
@@ -129,7 +134,6 @@ class JSONReport(JSONReportBase):
 
     def pytest_runtest_logreport(self, report):
         nodeid = report.nodeid
-        details = report._json_report_extra
         try:
             json_testitem = self._json_tests[nodeid]
         except KeyError:
@@ -141,7 +145,7 @@ class JSONReport(JSONReportBase):
                 report.location,
             )
             self._json_tests[nodeid] = json_testitem
-        metadata = details.get('metadata')
+        metadata = report._json_report_extra.get('metadata')
         if metadata:
             json_testitem['metadata'] = metadata
         # Update total test outcome, if necessary. The total outcome can be
@@ -150,6 +154,11 @@ class JSONReport(JSONReportBase):
             report=report, config=self._config)[0]
         if outcome not in ['passed', '']:
             json_testitem['outcome'] = outcome
+        json_testitem[report.when] = \
+            self._config.hook.pytest_json_runtest_stage(report=report)
+
+    @pytest.hookimpl(trylast=True)
+    def pytest_json_runtest_stage(self, report):
         if self._must_omit('traceback'):
             traceback = None
         else:
@@ -157,8 +166,8 @@ class JSONReport(JSONReportBase):
                 traceback = report.longrepr.reprtraceback
             except AttributeError:
                 traceback = None
-        stage_details = details[report.when]
-        json_testitem[report.when] = serialize.make_teststage(
+        stage_details = report._json_report_extra[report.when]
+        return serialize.make_teststage(
             report,
             stage_details.get('stdout'),
             stage_details.get('stderr'),
@@ -260,6 +269,23 @@ class Hooks:
         """Called after building JSON report and before saving it.
 
         Plugins can use this hook to modify the report before it's saved.
+        """
+
+    @pytest.hookspec(firstresult=True)
+    def pytest_json_runtest_stage(self, report):
+        """Return a dict used as the JSON representation of `report` (the
+        `_pytest.runner.TestReport` of the current test stage).
+
+        Called from `pytest_runtest_logreport`. Plugins can use this hook to
+        overwrite how the result of a test stage run gets turned into JSON.
+        """
+
+    def pytest_json_runtest_metadata(self, item, call):
+        """Return a dict which will be added to the current test item's JSON
+        metadata.
+
+        Called from `pytest_runtest_makereport`. Plugins can use this hook to
+        add metadata based on the current test run.
         """
 
 
