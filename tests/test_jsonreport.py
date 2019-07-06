@@ -298,6 +298,38 @@ def test_modifyreport_hook(testdir, make_json):
     assert 'summary' not in data
 
 
+def test_runtest_stage_hook(testdir, make_json):
+    testdir.makeconftest("""
+        def pytest_json_runtest_stage(report):
+            return {'outcome': report.outcome}
+    """)
+    data = make_json("""
+        def test_foo():
+            assert False
+    """)
+    test = data['tests'][0]
+    assert test['setup'] == {'outcome': 'passed'}
+    assert test['call'] == {'outcome': 'failed'}
+    assert test['teardown'] == {'outcome': 'passed'}
+
+
+def test_runtest_metadata_hook(testdir, make_json):
+    testdir.makeconftest("""
+        def pytest_json_runtest_metadata(item, call):
+            if call.when != 'call':
+                return {}
+            return {'id': item.nodeid, 'start': call.start, 'stop': call.stop}
+    """)
+    data = make_json("""
+        def test_foo():
+            assert False
+    """)
+    test = data['tests'][0]
+    assert test['metadata']['id'].endswith('::test_foo')
+    assert isinstance(test['metadata']['start'], float)
+    assert isinstance(test['metadata']['stop'], float)
+
+
 # TODO Investigate why no warnings are produced with multiple (4) processes
 @pytest.mark.xfail
 def test_warnings(make_json):

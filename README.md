@@ -81,6 +81,15 @@ def test_something(json_metadata):
     json_metadata['bar'] = 123
 ```
 
+Or you can use the `pytest_json_runtest_metadata` hook (in your `conftest.py`) to add metadata based on the current test run. The dict returned will be automatically added to the existing metadata. E.g., this adds the start and stop time of each test's `call` stage to the metadata:
+
+```python
+def pytest_json_runtest_metadata(item, call):
+    if call.when != 'call':
+        return {}
+    return {'start': call.start, 'stop': call.stop}
+```
+
 Also, you could add metadata using [pytest-metadata's `--metadata` switch](https://github.com/pytest-dev/pytest-metadata#additional-metadata) which will add metadata to the report's `environment` section, but not to a specific test item. You need to make sure all your metadata is JSON-serializable.
 
 ### Modifying the report
@@ -104,6 +113,13 @@ def pytest_sessionfinish(session):
     report = session.config._json_report.report
     print(report['exitcode'])
     ...
+```
+
+If you *really* want to change how the result of a test stage run is turned into JSON, you can use the `pytest_json_runtest_stage` hook. It takes a [`TestReport`](https://docs.pytest.org/en/latest/reference.html#_pytest.runner.TestReport) and returns a JSON-serializable dict:
+
+```python
+def pytest_json_runtest_stage(report):
+    return {'outcome': report.outcome}
 ```
 
 ### Direct invocation
