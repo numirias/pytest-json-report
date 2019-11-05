@@ -186,13 +186,15 @@ Number of outcomes per category and the total number of test items.
 
 | Key | Description |
 | --- | --- |
+|  `collected` | Total number of tests collected. |
+|  `total` | Total number of tests run. |
 | `<outcome>` | Number of tests with that outcome. (absent if number is 0) |
-|  `total` | Total number of tests. |
 
 #### Example
 
 ```python
 {
+    "collected": 10,
     "passed": 2,
     "failed": 3,
     "xfailed": 1,
@@ -247,6 +249,7 @@ The `result` is a list of the collected nodes:
 | `nodeid` | ID of the node. |
 | `type` | Type of the collected node. |
 | `lineno` | Line number. (absent if not applicable) |
+| `deselected` | `true` if the test is deselected. (absent if not deselected) |
 
 #### Example
 
@@ -270,6 +273,7 @@ The `result` is a list of the collected nodes:
                 "nodeid": "test_foo.py::test_pass",
                 "type": "Function",
                 "lineno": 24,
+                "deselected": true
             },
             ...
         ]

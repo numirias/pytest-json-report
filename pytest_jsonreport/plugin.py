@@ -129,8 +129,29 @@ class JSONReport(JSONReportBase):
         self._start_time = time.time()
 
     def pytest_collectreport(self, report):
-        if not self._must_omit('collectors'):
-            self._json_collectors.append(serialize.make_collector(report))
+        if self._must_omit('collectors'):
+            return
+        json_result = []
+        for item in report.result:
+            json_item = serialize.make_collectitem(item)
+            item._json_collectitem = json_item
+            json_result.append(json_item)
+        self._json_collectors.append(serialize.make_collector(report,
+                                                              json_result))
+
+    def pytest_deselected(self, items):
+        if self._must_omit('collectors'):
+            return
+        for item in items:
+            item._json_collectitem['deselected'] = True
+
+    @pytest.hookimpl(hookwrapper=True)
+    def pytest_collection_modifyitems(self, items):
+        yield
+        if self._must_omit('collectors'):
+            return
+        for item in items:
+            del item._json_collectitem
 
     def pytest_runtest_logreport(self, report):
         nodeid = report.nodeid
@@ -183,7 +204,8 @@ class JSONReport(JSONReportBase):
             exitcode=session.exitstatus,
             root=str(session.fspath),
             environment=getattr(self._config, '_metadata', {}),
-            summary=serialize.make_summary(self._json_tests),
+            summary=serialize.make_summary(self._json_tests,
+                                           collected=session.testscollected),
         )
         if not self._config.option.json_report_summary:
             if self._json_collectors:
@@ -215,7 +237,7 @@ class JSONReport(JSONReportBase):
                 os.makedirs(dirname)
             # Mimick FileExistsError for py2.7 compatibility
             except OSError as e:
-                import errno
+                import errno  # pylint: disable=import-outside-toplevel
                 if e.errno != errno.EEXIST:
                     raise
         with open(path, 'w') as f:
