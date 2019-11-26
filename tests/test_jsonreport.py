@@ -346,9 +346,7 @@ def test_runtest_metadata_hook(testdir, make_json):
     assert isinstance(test['metadata']['stop'], float)
 
 
-# TODO Investigate why no warnings are produced with multiple (4) processes
-@pytest.mark.xfail
-def test_warnings(make_json):
+def test_warnings(make_json, num_processes):
     warnings = make_json("""
         class TestFoo:
             def __init__(self):
@@ -356,10 +354,11 @@ def test_warnings(make_json):
             def test_foo(self):
                 assert True
     """)['warnings']
-    assert len(warnings) == 1
+    assert len(warnings) == max(1, num_processes)
     assert set(warnings[0]) == {
-        'filename', 'lineno', 'message', 'when'
+        'category', 'filename', 'lineno', 'message', 'when'
     }
+    assert warnings[0]['category'] == 'PytestCollectionWarning'
     assert warnings[0]['filename'].endswith('.py')
     assert warnings[0]['lineno'] == 1
     assert warnings[0]['when'] == 'collect'
