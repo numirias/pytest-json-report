@@ -103,6 +103,7 @@ def make_warning(warning_message, when):
     # warning_message is a warnings.WarningMessage object
     return {
         'message': str(warning_message.message),
+        'category': warning_message.category.__name__,
         'when': when,
         'filename': warning_message.filename,
         'lineno': warning_message.lineno
