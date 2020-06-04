@@ -71,6 +71,12 @@ If you don't like to have the report saved, you can specify `none` as the target
 $ pytest --json-report --json-report-file none
 ```
 
+Or
+
+```bash
+$ pytest --json-report --json-report-file=none
+```
+
 ### Metadata
 
 You can add your own metadata to a test item by using the `json_metadata` test fixture:
