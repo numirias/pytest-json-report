@@ -131,7 +131,7 @@ import pytest
 from pytest_jsonreport.plugin import JSONReport
 
 plugin = JSONReport()
-pytest.main(['test_foo.py'], plugins=[plugin])
+pytest.main(['--json-report-file=none', 'test_foo.py'], plugins=[plugin])
 
 ```
 
