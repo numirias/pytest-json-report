@@ -279,7 +279,7 @@ class JSONReportWorker(JSONReportBase):
 class LoggingHandler(logging.Handler):
 
     def __init__(self):
-        super(LoggingHandler, self).__init__()
+        super().__init__()
         self.records = []
 
     def emit(self, record):
