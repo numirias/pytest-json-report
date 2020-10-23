@@ -8,6 +8,7 @@ import time
 import warnings
 
 import pytest
+import _pytest.hookspec
 
 from . import serialize
 
@@ -250,7 +251,7 @@ class JSONReport(JSONReportBase):
             self._terminal_summary.append(
                 'JSON report written to: %s (%d bytes)' % (path, f.tell()))
 
-    def pytest_warning_captured(self, warning_message, when):
+    def pytest_warning_recorded(self, warning_message, when):
         if self._config is None:
             # If pytest is invoked directly from code, it may try to capture
             # warnings before the config is set.
@@ -258,6 +259,11 @@ class JSONReport(JSONReportBase):
         if not self._must_omit('warnings'):
             self._json_warnings.append(
                 serialize.make_warning(warning_message, when))
+
+    # Warning hook fallback (warning_recorded is available from pytest>=6)
+    if not hasattr(_pytest.hookspec, 'pytest_warning_recorded'):
+        pytest_warning_captured = pytest_warning_recorded
+        del pytest_warning_recorded
 
     def pytest_terminal_summary(self, terminalreporter):
         terminalreporter.write_sep('-', 'JSON report')
