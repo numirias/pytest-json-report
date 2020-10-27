@@ -71,9 +71,11 @@ If you don't like to have the report saved, you can specify `none` as the target
 $ pytest --json-report --json-report-file none
 ```
 
+## Advanced usage
+
 ### Metadata
 
-You can add your own metadata to a test item by using the `json_metadata` test fixture:
+The easiest way to add your own metadata to a test item is by using the `json_metadata` [test fixture](https://docs.pytest.org/en/stable/fixture.html):
 
 ```python
 def test_something(json_metadata):
@@ -81,7 +83,7 @@ def test_something(json_metadata):
     json_metadata['bar'] = 123
 ```
 
-Or you can use the `pytest_json_runtest_metadata` hook (in your `conftest.py`) to add metadata based on the current test run. The dict returned will be automatically added to the existing metadata. E.g., this adds the start and stop time of each test's `call` stage to the metadata:
+Or use the `pytest_json_runtest_metadata` [hook](https://docs.pytest.org/en/stable/reference.html#hooks) (in your `conftest.py`) to add metadata based on the current test run. The dict returned will automatically be merged with any existing metadata. E.g., this adds the start and stop time of each test's `call` stage:
 
 ```python
 def pytest_json_runtest_metadata(item, call):
@@ -91,6 +93,21 @@ def pytest_json_runtest_metadata(item, call):
 ```
 
 Also, you could add metadata using [pytest-metadata's `--metadata` switch](https://github.com/pytest-dev/pytest-metadata#additional-metadata) which will add metadata to the report's `environment` section, but not to a specific test item. You need to make sure all your metadata is JSON-serializable.
+
+### A note on hooks
+
+If you're using a `pytest_json_*` hook although the plugin is not installed or not active (not using `--json-report`), pytest doesn't recognize it and may fail with an internal error like this:
+```
+INTERNALERROR> pluggy.manager.PluginValidationError: unknown hook 'pytest_json_runtest_metadata' in plugin <module 'conftest' from 'conftest.py'>
+```
+You can avoid this by declaring the hook implementation optional:
+
+```python
+import pytest
+@pytest.hookimpl(optionalhook=True)
+def pytest_json_runtest_metadata(item, call):
+    ...
+```
 
 ### Modifying the report
 
@@ -111,8 +128,7 @@ After `pytest_sessionfinish`, the report object is also directly available to sc
 ```python
 def pytest_sessionfinish(session):
     report = session.config._json_report.report
-    print(report['exitcode'])
-    ...
+    print('exited with', report['exitcode'])
 ```
 
 If you *really* want to change how the result of a test stage run is turned into JSON, you can use the `pytest_json_runtest_stage` hook. It takes a [`TestReport`](https://docs.pytest.org/en/latest/reference.html#_pytest.runner.TestReport) and returns a JSON-serializable dict:
@@ -124,7 +140,7 @@ def pytest_json_runtest_stage(report):
 
 ### Direct invocation
 
-You can also use the plugin when invoking `pytest.main()` directly from code:
+You can use the plugin when invoking `pytest.main()` directly from code:
 
 ```python
 import pytest
@@ -132,7 +148,6 @@ from pytest_jsonreport.plugin import JSONReport
 
 plugin = JSONReport()
 pytest.main(['--json-report-file=none', 'test_foo.py'], plugins=[plugin])
-
 ```
 
 You can then access the `report` object:
