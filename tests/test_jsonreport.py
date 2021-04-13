@@ -240,6 +240,30 @@ def test_report_streams(tests):
     assert 'stderr' not in tests['pass']['call']
 
 
+def test_record_property(make_json, num_processes):
+    data = make_json("""
+        def test_record_property(record_property):
+            record_property('foo', 42)
+            record_property('bar', ['baz', {'x': 'y'}])
+            record_property('foo', 43)
+            record_property(123, 456)
+
+        def test_record_property_empty(record_property):
+            assert True
+
+        def test_record_property_unserializable(record_property):
+            record_property('foo', b'somebytes')
+    """)
+    tests_ = tests_only(data)
+    assert tests_['record_property']['user_properties'] == \
+        [{'foo': 42}, {'bar': ['baz', {'x': 'y'}]}, {'foo': 43}, {'123': 456}]
+    assert 'user_properties' not in tests_['record_property_empty'].keys()
+    # TODO Relay warnings correctly when using xdist
+    if num_processes == 0:
+        assert len(data['warnings']) == 1 and (
+            'not JSON-serializable' in data['warnings'][0]['message'])
+
+
 def test_json_metadata(make_json):
     data = make_json("""
         def test_metadata1(json_metadata):

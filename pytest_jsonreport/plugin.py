@@ -102,9 +102,7 @@ class JSONReportBase:
         it."""
         if 'metadata' not in item._json_report_extra:
             return
-        try:
-            json.dumps(item._json_report_extra['metadata'])
-        except (TypeError, OverflowError):
+        if not serialize.serializable(item._json_report_extra['metadata']):
             warnings.warn(
                 'Metadata of {} is not JSON-serializable.'.format(item.nodeid))
             del item._json_report_extra['metadata']
@@ -170,6 +168,14 @@ class JSONReport(JSONReportBase):
         metadata = report._json_report_extra.get('metadata')
         if metadata:
             json_testitem['metadata'] = metadata
+        # Add user properties in teardown stage if attribute exists and is non-empty
+        if report.when == 'teardown' and getattr(report, 'user_properties', None):
+            user_properties = [{str(key): val} for key, val in report.user_properties]
+            if serialize.serializable(user_properties):
+                json_testitem['user_properties'] = user_properties
+            else:
+                warnings.warn('User properties of {} are not JSON-serializable.'.format(nodeid))
+
         # Update total test outcome, if necessary. The total outcome can be
         # different from the outcome of the setup/call/teardown stage.
         outcome = self._config.hook.pytest_report_teststatus(

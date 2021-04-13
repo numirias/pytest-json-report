@@ -2,6 +2,16 @@
 
 """
 from collections import Counter
+import json
+
+
+def serializable(obj):
+    """Return whether `obj` is JSON-serializable."""
+    try:
+        json.dumps(obj)
+    except (TypeError, OverflowError):
+        return False
+    return True
 
 
 def make_collector(report, result):
