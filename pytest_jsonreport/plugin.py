@@ -170,6 +170,10 @@ class JSONReport(JSONReportBase):
         metadata = report._json_report_extra.get('metadata')
         if metadata:
             json_testitem['metadata'] = metadata
+        if report.user_properties:
+            json_testitem['user_properties'] = {}
+            for propname, propvalue in report.user_properties:
+                json_testitem['user_properties'][propname] = str(propvalue)
         # Update total test outcome, if necessary. The total outcome can be
         # different from the outcome of the setup/call/teardown stage.
         outcome = self._config.hook.pytest_report_teststatus(

@@ -240,6 +240,22 @@ def test_report_streams(tests):
     assert 'stderr' not in tests['pass']['call']
 
 
+def test_record_property(make_json):
+    data = make_json("""
+        def test_record_property(record_property):
+            record_property("foo", 42)
+            record_property("bar", "baz")
+            assert True
+
+        def test_record_property_empty(record_property):
+            assert True
+    """)
+    tests_ = tests_only(data)
+    assert tests_['record_property']['user_properties'] == \
+        {'foo': '42', 'bar': 'baz'}
+    assert 'user_properties' not in tests_['record_property_empty'].keys()
+
+
 def test_json_metadata(make_json):
     data = make_json("""
         def test_metadata1(json_metadata):
