@@ -358,7 +358,10 @@ def test_warnings(make_json, num_processes):
     assert set(warnings[0]) == {
         'category', 'filename', 'lineno', 'message', 'when'
     }
-    assert warnings[0]['category'] == 'PytestCollectionWarning'
+    assert warnings[0]['category'] in (
+        'PytestCollectionWarning',
+        'PytestWarning'
+    )
     assert warnings[0]['filename'].endswith('.py')
     assert warnings[0]['lineno'] == 1
     assert warnings[0]['when'] == 'collect'
@@ -488,15 +491,15 @@ def test_xdist(make_json, match_reports):
 
 def test_bug_31(make_json):
     data = make_json('''
-        import pytest
+        from flaky import flaky
 
         FLAKY_RUNS = 0
 
-        @pytest.mark.flaky
+        @flaky
         def test_flaky_pass():
             assert 1 + 1 == 2
 
-        @pytest.mark.flaky
+        @flaky
         def test_flaky_fail():
             global FLAKY_RUNS
             FLAKY_RUNS += 1
