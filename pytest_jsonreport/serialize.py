@@ -94,6 +94,12 @@ def make_crash(report):
 
 def make_traceback(traceback):
     """Return JSON-serializable traceback details."""
+    if traceback.style == "native":
+        return "\n".join(
+            line
+            for entry in traceback.reprentries
+            for line in entry.lines
+        )
     return [{
         'path': entry.reprfileloc.path,
         'lineno': entry.reprfileloc.lineno,
