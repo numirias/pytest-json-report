@@ -557,3 +557,25 @@ def test_bug_41(misc_testdir):
     """#41: Create report file path if it doesn't exist."""
     misc_testdir.runpytest('--json-report', '--json-report-file=x/report.json')
     assert (misc_testdir.tmpdir / 'x/report.json').exists()
+
+
+def test_bug_native_tb(make_json, testdir):
+    """
+    Tests that we don't crash when `--tb=native` is passed to pytest
+    """
+    test_file = """
+        def test_boom():
+            assert False is True
+    """
+    data = make_json(test_file, ['--json-report', '--tb=native'])
+    expected_traceback = """Traceback (most recent call last):
+
+  File "%(testdir)s/test_bug_native_tb.py", line 2, in test_boom
+    assert False is True
+
+AssertionError: assert False is True
+""" % {"testdir": testdir}
+    assert {
+        test['nodeid']: test['call']['traceback']
+        for test in data['tests']
+    } == {'test_bug_native_tb.py::test_boom': expected_traceback}
