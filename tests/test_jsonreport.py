@@ -1,4 +1,5 @@
 import logging
+import os.path
 import sys
 import pytest
 
@@ -52,7 +53,7 @@ def test_report_keys(num_processes, make_json):
     assert set(data) == keys
     assert isinstance(data['created'], float)
     assert isinstance(data['duration'], float)
-    assert data['root'].startswith('/')
+    assert os.path.isabs(data['root'])
     assert data['exitcode'] == 1
 
 
