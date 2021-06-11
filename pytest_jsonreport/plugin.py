@@ -222,8 +222,6 @@ class JSONReport(JSONReportBase):
         path = self._config.option.json_report_file
         if path:
             self.save_report(path)
-        else:
-            self._terminal_summary.append('no JSON report written.')
 
     def save_report(self, path):
         """Save the JSON report to `path`."""
@@ -266,6 +264,8 @@ class JSONReport(JSONReportBase):
         del pytest_warning_recorded
 
     def pytest_terminal_summary(self, terminalreporter):
+        if not self._terminal_summary:
+            return
         terminalreporter.write_sep('-', 'JSON report')
         for line in self._terminal_summary:
             terminalreporter.write_line(line)
