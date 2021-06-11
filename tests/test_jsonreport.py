@@ -36,9 +36,12 @@ def test_create_report_file_from_arg(misc_testdir):
 
 def test_create_no_report(misc_testdir):
     res = misc_testdir.runpytest('--json-report', '--json-report-file=NONE')
-    res.stdout.fnmatch_lines([
-        '*no JSON report written*',
-    ])
+
+    # no summary output
+    res.stdout.no_fnmatch_line('*-- JSON report --*')
+
+    # no more useless summary output line when generating an in-memory report
+    res.stdout.no_fnmatch_line('*no JSON report written*')
 
 
 def test_report_keys(num_processes, make_json):
