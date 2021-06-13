@@ -187,20 +187,14 @@ class JSONReport(JSONReportBase):
 
     @pytest.hookimpl(trylast=True)
     def pytest_json_runtest_stage(self, report):
-        if self._must_omit('traceback'):
-            traceback = None
-        else:
-            try:
-                traceback = report.longrepr.reprtraceback
-            except AttributeError:
-                traceback = None
         stage_details = report._json_report_extra[report.when]
         return serialize.make_teststage(
             report,
+            # TODO Can we use pytest's BaseReport.capstdout/err/log here?
             stage_details.get('stdout'),
             stage_details.get('stderr'),
             stage_details.get('log'),
-            traceback,
+            self._must_omit('traceback'),
         )
 
     @pytest.hookimpl(tryfirst=True)

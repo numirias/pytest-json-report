@@ -187,6 +187,23 @@ def test_report_crash_and_traceback(tests):
     assert call['traceback'] == traceback
 
 
+def test_report_traceback_styles(make_json):
+    """Handle different traceback styles (`--tb=...`)."""
+    code = '''
+        def test_raise(): assert False
+        def test_raise_nested(): f = lambda: g; f()
+    '''
+    for style in ('long', 'short'):
+        data = make_json(code, ['--json-report', '--tb=%s' % style])
+        for i in (0, 1):
+            assert isinstance(data['tests'][i]['call']['traceback'], list)
+
+    for style in ('native', 'line', 'no'):
+        data = make_json(code, ['--json-report', '--tb=%s' % style])
+        for i in (0, 1):
+            assert 'traceback' not in data['tests'][i]['call']
+
+
 def test_report_item_deselected(make_json):
     data = make_json("""
         import pytest

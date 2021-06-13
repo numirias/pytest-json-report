@@ -57,48 +57,48 @@ def make_testitem(nodeid, keywords, location):
     return item
 
 
-def make_teststage(report, stdout, stderr, log, traceback):
+def make_teststage(report, stdout, stderr, log, omit_traceback):
     """Return JSON-serializable test stage (setup/call/teardown)."""
     stage = {
         'duration': report.duration,
         'outcome': report.outcome,
     }
-    stage.update(make_crash(report))
-    if traceback:
-        stage['traceback'] = make_traceback(traceback)
+    crash = getattr(report.longrepr, 'reprcrash', None)
+    if crash is not None:
+        stage['crash'] = make_fileloc(crash)
+        if not omit_traceback:
+            try:
+                stage['traceback'] = [make_fileloc(x.reprfileloc) for x in
+                                      report.longrepr.reprtraceback.reprentries]
+            except AttributeError:
+                # Happens if no detailed tb entries are available (e.g. due to
+                # `--tb=native`, see `_pytest._code.code.ReprTracebackNative`).
+                # Then we can't provide any tb info beyond the raw error text
+                # in `longrepr`, so just pass quietly.
+                pass
     if stdout:
         stage['stdout'] = stdout
     if stderr:
         stage['stderr'] = stderr
     if log:
         stage['log'] = log
-    if report.longreprtext:
-        stage['longrepr'] = report.longreprtext
+    # Error representation string (attr is computed property, so get only once)
+    longrepr = report.longreprtext
+    if longrepr:
+        stage['longrepr'] = longrepr
     return stage
 
 
-def make_crash(report):
-    """Return JSON-serializable crash details."""
-    try:
-        crash = report.longrepr.reprcrash
-    except AttributeError:
-        return {}
+def make_fileloc(loc):
+    """Return JSON-serializable file location representation.
+
+    See `_pytest._code.code.ReprFileLocation`.
+    """
     return {
-        'crash': {
-            'path': crash.path,
-            'lineno': crash.lineno,
-            'message': crash.message,
-        },
+        'path': loc.path,
+        'lineno': loc.lineno,
+        'message': loc.message,
     }
-
-
-def make_traceback(traceback):
-    """Return JSON-serializable traceback details."""
-    return [{
-        'path': entry.reprfileloc.path,
-        'lineno': entry.reprfileloc.lineno,
-        'message': entry.reprfileloc.message,
-    } for entry in traceback.reprentries]
 
 
 def make_summary(tests, **kwargs):
@@ -110,7 +110,7 @@ def make_summary(tests, **kwargs):
 
 
 def make_warning(warning_message, when):
-    # warning_message is a warnings.WarningMessage object
+    # `warning_message` is a stdlib warnings.WarningMessage object
     return {
         'message': str(warning_message.message),
         'category': warning_message.category.__name__,

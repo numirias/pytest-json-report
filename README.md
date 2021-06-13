@@ -350,11 +350,11 @@ A test stage item.
 | `duration` | Duration of the test stage in seconds. |
 | `outcome` | Outcome of the test stage. (can be different from the overall test outcome) |
 | `crash` | Crash entry. (absent if no error occurred) |
-| `traceback` | List of traceback entries. (absent if no error occurred) |
+| `traceback` | List of traceback entries. (absent if no error occurred; affected by `--tb` option) |
 | `stdout` | Standard output. (absent if none available) |
 | `stderr` | Standard error. (absent if none available) |
 | `log` | [Log](#log) entry. (absent if none available) |
-| `longrepr` | Representation of the error. (absent if no error occurred) |
+| `longrepr` | Representation of the error. (absent if no error occurred; format affected by `--tb` option) |
 
 #### Example
 
