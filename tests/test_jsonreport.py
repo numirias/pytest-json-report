@@ -21,12 +21,8 @@ def test_no_report(misc_testdir):
 
 
 def test_create_report(misc_testdir):
-    res = misc_testdir.runpytest('--json-report')
+    misc_testdir.runpytest('--json-report')
     assert (misc_testdir.tmpdir / '.report.json').exists()
-
-    res.stdout.fnmatch_lines([
-        '*report written*.report.json*',
-    ])
 
 
 def test_create_report_file_from_arg(misc_testdir):
@@ -35,13 +31,28 @@ def test_create_report_file_from_arg(misc_testdir):
 
 
 def test_create_no_report(misc_testdir):
+    misc_testdir.runpytest('--json-report', '--json-report-file=NONE')
+    assert not (misc_testdir.tmpdir / '.report.json').exists()
+
+
+def test_terminal_summary(misc_testdir):
+    res = misc_testdir.runpytest('--json-report')
+    res.stdout.fnmatch_lines(['-*JSON report*-', '*report saved*.report.json*'])
+
+    res = misc_testdir.runpytest('--json-report', '--json-report-file=./')
+    res.stdout.fnmatch_lines(['*could not save report*'])
+
     res = misc_testdir.runpytest('--json-report', '--json-report-file=NONE')
+    res.stdout.no_fnmatch_line('-*JSON report*-')
 
-    # no summary output
-    res.stdout.no_fnmatch_line('*-- JSON report --*')
+    res = misc_testdir.runpytest('--json-report', '--json-report-file=NONE', '-v')
+    res.stdout.fnmatch_lines(['*auto-save skipped*'])
 
-    # no more useless summary output line when generating an in-memory report
-    res.stdout.no_fnmatch_line('*no JSON report written*')
+    res = misc_testdir.runpytest('--json-report', '-q')
+    res.stdout.no_fnmatch_line('-*JSON report*-')
+
+    res = misc_testdir.runpytest('--json-report', '-q', '--json-report-verbosity=0')
+    res.stdout.fnmatch_lines(['-*JSON report*-'])
 
 
 def test_report_keys(num_processes, make_json):
