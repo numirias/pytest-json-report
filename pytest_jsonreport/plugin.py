@@ -120,8 +120,9 @@ class JSONReport(JSONReportBase):
         self._json_tests = OrderedDict()
         self._json_collectors = []
         self._json_warnings = []
-        # List of terminal summary lines
-        self._terminal_summary = []
+        self._terminal_summary = ''
+        # Min verbosity required to print to terminal
+        self._terminal_min_verbosity = 0
         self.report = None
 
     def pytest_sessionstart(self, session):
@@ -221,14 +222,23 @@ class JSONReport(JSONReportBase):
         self.report = json_report
         path = self._config.option.json_report_file
         if path:
-            self.save_report(path)
+            try:
+                self.save_report(path)
+            except OSError as e:
+                self._terminal_summary = 'could not save report: {}'.format(e)
+            else:
+                self._terminal_summary = 'report saved to: {}'.format(path)
+        else:
+            self._terminal_summary = 'report auto-save skipped'
+            self._terminal_min_verbosity = 1
 
     def save_report(self, path):
-        """Save the JSON report to `path`."""
-        json_report = self.report
-        if json_report is None:
-            warnings.warn('No report has been created yet. Nothing saved.')
-            return
+        """Save the JSON report to `path`.
+
+        Raises an exception if saving failed.
+        """
+        if self.report is None:
+            raise Exception('could not save report: no report available')
         # Create path if it doesn't exist
         dirname = os.path.dirname(path)
         if dirname:
@@ -241,13 +251,11 @@ class JSONReport(JSONReportBase):
                     raise
         with open(path, 'w') as f:
             json.dump(
-                json_report,
+                self.report,
                 f,
                 default=str,
                 indent=self._config.option.json_report_indent,
             )
-            self._terminal_summary.append(
-                'JSON report written to: %s (%d bytes)' % (path, f.tell()))
 
     def pytest_warning_recorded(self, warning_message, when):
         if self._config is None:
@@ -264,11 +272,13 @@ class JSONReport(JSONReportBase):
         del pytest_warning_recorded
 
     def pytest_terminal_summary(self, terminalreporter):
-        if not self._terminal_summary:
+        if self._terminal_min_verbosity > (
+                self._config.option.json_report_verbosity if
+                self._config.option.json_report_verbosity is not None else
+                terminalreporter.verbosity):
             return
         terminalreporter.write_sep('-', 'JSON report')
-        for line in self._terminal_summary:
-            terminalreporter.write_line(line)
+        terminalreporter.write_line(self._terminal_summary)
 
 
 class JSONReportWorker(JSONReportBase):
@@ -353,6 +363,9 @@ def pytest_addoption(parser):
     group.addoption(
         '--json-report-indent', type=int, help='pretty-print JSON with '
         'specified indentation level')
+    group._addoption(
+        '--json-report-verbosity', type=int, help='set verbosity (default is '
+        'value of --verbosity)')
 
 
 def pytest_configure(config):

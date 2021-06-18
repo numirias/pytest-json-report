@@ -42,6 +42,7 @@ pip install pytest-json-report --upgrade
 | `--json-report-summary` | Just create a summary without per-test details |
 | `--json-report-omit=FIELD_LIST` | List of fields to omit in the report (choose from: `collectors`, `log`, `traceback`, `streams`, `warnings`, `keywords`) |
 | `--json-report-indent=LEVEL` | Pretty-print JSON with specified indentation level |
+| `--json-report-verbosity=LEVEL` | Set verbosity (default is value of `--verbosity`) |
 
 ## Usage
 
