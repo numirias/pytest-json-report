@@ -54,6 +54,10 @@ def test_terminal_summary(misc_testdir):
     res = misc_testdir.runpytest('--json-report', '-q', '--json-report-verbosity=0')
     res.stdout.fnmatch_lines(['-*JSON report*-'])
 
+    res = misc_testdir.runpytest(
+        '--json-report', '--json-report-file=NONE', '-vv', '--json-report-verbosity=0')
+    res.stdout.no_fnmatch_line('-*JSON report*-')
+
 
 def test_report_keys(num_processes, make_json):
     data = make_json()
