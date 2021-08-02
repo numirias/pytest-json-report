@@ -1,7 +1,6 @@
 # Pytest JSON Report
 
-[![Build Status](https://travis-ci.com/numirias/pytest-json-report.svg?branch=master)](https://travis-ci.com/numirias/pytest-json-report)
-[![codecov](https://codecov.io/gh/numirias/pytest-json-report/branch/master/graph/badge.svg)](https://codecov.io/gh/numirias/pytest-json-report)
+[![CI](https://github.com/numirias/pytest-json-report/actions/workflows/main.yml/badge.svg)](https://github.com/numirias/pytest-json-report/actions/workflows/main.yml)
 [![PyPI Version](https://img.shields.io/pypi/v/pytest-json-report.svg)](https://pypi.python.org/pypi/pytest-json-report)
 [![Python Versions](https://img.shields.io/pypi/pyversions/pytest-json-report.svg)](https://pypi.python.org/pypi/pytest-json-report)
 
