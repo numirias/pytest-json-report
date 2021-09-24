@@ -252,7 +252,7 @@ class JSONReport(JSONReportBase):
                 import errno  # pylint: disable=import-outside-toplevel
                 if e.errno != errno.EEXIST:
                     raise
-        with open(path, 'w') as f:
+        with open(path, 'w', encoding='utf-8') as f:
             json.dump(
                 self.report,
                 f,
