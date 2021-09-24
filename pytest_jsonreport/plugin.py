@@ -143,7 +143,10 @@ class JSONReport(JSONReportBase):
         if self._must_omit('collectors'):
             return
         for item in items:
-            item._json_collectitem['deselected'] = True
+            try:
+                item._json_collectitem['deselected'] = True
+            except AttributeError:
+                continue
 
     @pytest.hookimpl(hookwrapper=True)
     def pytest_collection_modifyitems(self, items):
