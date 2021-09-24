@@ -592,3 +592,18 @@ def test_bug_41(misc_testdir):
     """#41: Create report file path if it doesn't exist."""
     misc_testdir.runpytest('--json-report', '--json-report-file=x/report.json')
     assert (misc_testdir.tmpdir / 'x/report.json').exists()
+
+
+def test_bug_69(testdir):
+    """#69: Handle deselection of test items that have not been collected."""
+    fn = testdir.makepyfile('''
+        def test_pass():
+            assert True
+        def test_fail():
+            assert False
+    ''').strpath
+    assert testdir.runpytest('--json-report', fn).ret == 1
+    # In this second run, `--last-failed` causes `test_pass` to not be
+    # *collected* but still explicitly *deselected*, so we assert there is no
+    # internal error caused by trying to access the collector obj.
+    assert testdir.runpytest('--json-report', '--last-failed', fn).ret == 1
