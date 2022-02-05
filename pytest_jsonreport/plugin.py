@@ -120,6 +120,7 @@ class JSONReport(JSONReportBase):
         self._json_tests = OrderedDict()
         self._json_collectors = []
         self._json_warnings = []
+        self._num_deselected = 0
         self._terminal_summary = ''
         # Min verbosity required to print to terminal
         self._terminal_min_verbosity = 0
@@ -140,11 +141,14 @@ class JSONReport(JSONReportBase):
                                                               json_result))
 
     def pytest_deselected(self, items):
+        self._num_deselected += len(items)
         if self._must_omit('collectors'):
             return
         for item in items:
             try:
                 item._json_collectitem['deselected'] = True
+            # Happens when the item has not been collected before (i.e. didn't
+            # go through `pytest_collectreport`), e.g. due to `--last-failed`
             except AttributeError:
                 continue
 
@@ -154,7 +158,10 @@ class JSONReport(JSONReportBase):
         if self._must_omit('collectors'):
             return
         for item in items:
-            del item._json_collectitem
+            try:
+                del item._json_collectitem
+            except AttributeError:
+                pass
 
     def pytest_runtest_logreport(self, report):
         # The `_json_report_extra` attr may have been lost, e.g. when the
@@ -208,14 +215,21 @@ class JSONReport(JSONReportBase):
 
     @pytest.hookimpl(tryfirst=True)
     def pytest_sessionfinish(self, session):
+        summary_data = {
+            # Need to add deselected count to get correct number of collected
+            # tests (see pytest-dev/pytest#9614)
+            'collected': session.testscollected + self._num_deselected
+        }
+        if self._num_deselected:
+            summary_data['deselected'] = self._num_deselected
+
         json_report = serialize.make_report(
             created=time.time(),
             duration=time.time() - self._start_time,
             exitcode=session.exitstatus,
             root=str(session.fspath),
             environment=getattr(self._config, '_metadata', {}),
-            summary=serialize.make_summary(self._json_tests,
-                                           collected=session.testscollected),
+            summary=serialize.make_summary(self._json_tests, **summary_data),
         )
         if not self._config.option.json_report_summary:
             if self._json_collectors:
