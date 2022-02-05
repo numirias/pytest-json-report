@@ -203,6 +203,7 @@ Number of outcomes per category and the total number of test items.
 | --- | --- |
 |  `collected` | Total number of tests collected. |
 |  `total` | Total number of tests run. |
+|  `deselected` | Total number of tests deselected. (absent if number is 0) |
 | `<outcome>` | Number of tests with that outcome. (absent if number is 0) |
 
 #### Example

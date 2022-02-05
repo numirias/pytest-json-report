@@ -232,7 +232,9 @@ def test_report_item_deselected(make_json):
         def test_second():
             pass
     """, ['--json-report', '-m', 'not bad'])
-    assert data['summary']['collected'] == 1
+    assert data['summary']['collected'] == 2
+    assert data['summary']['total'] == 1
+    assert data['summary']['deselected'] == 1
     assert not data['collectors'][1]['result'][0].get('deselected')
     assert data['collectors'][1]['result'][1].get('deselected')
 
