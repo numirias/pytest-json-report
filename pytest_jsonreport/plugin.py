@@ -157,6 +157,11 @@ class JSONReport(JSONReportBase):
             del item._json_collectitem
 
     def pytest_runtest_logreport(self, report):
+        # The `_json_report_extra` attr may have been lost, e.g. when the
+        # original report object got replaced due to a crashed xdist worker (#75)
+        if not hasattr(report, '_json_report_extra'):
+            report._json_report_extra = {}
+
         nodeid = report.nodeid
         try:
             json_testitem = self._json_tests[nodeid]
@@ -191,7 +196,7 @@ class JSONReport(JSONReportBase):
 
     @pytest.hookimpl(trylast=True)
     def pytest_json_runtest_stage(self, report):
-        stage_details = report._json_report_extra[report.when]
+        stage_details = report._json_report_extra.get(report.when, {})
         return serialize.make_teststage(
             report,
             # TODO Can we use pytest's BaseReport.capstdout/err/log here?
