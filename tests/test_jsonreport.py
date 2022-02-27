@@ -607,3 +607,22 @@ def test_bug_69(testdir):
     # *collected* but still explicitly *deselected*, so we assert there is no
     # internal error caused by trying to access the collector obj.
     assert testdir.runpytest('--json-report', '--last-failed', fn).ret == 1
+
+
+def test_bug_75(make_json, num_processes):
+    """#75: Check that a crashing xdist worker doesn't kill the whole test run."""
+    if num_processes < 1:
+        pytest.skip("This test only makes sense with xdist.")
+
+    data = make_json('''
+        import pytest
+        import os
+
+        @pytest.mark.parametrize("n", range(10))
+        def test_crash_one_worker(n):
+            if n == 0:
+                os._exit(1)
+    ''')
+    assert data['exitcode'] == 1
+    assert data['summary']['passed'] == 9
+    assert data['summary']['failed'] == 1
