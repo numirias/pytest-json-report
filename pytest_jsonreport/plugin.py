@@ -247,7 +247,7 @@ class JSONReport(JSONReportBase):
         if dirname:
             try:
                 os.makedirs(dirname)
-            # Mimick FileExistsError for py2.7 compatibility
+            # Mimic FileExistsError for py2.7 compatibility
             except OSError as e:
                 import errno  # pylint: disable=import-outside-toplevel
                 if e.errno != errno.EEXIST:
