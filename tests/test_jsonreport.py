@@ -461,7 +461,7 @@ def test_logging(make_json):
         def fixture(request):
             logging.info('log info')
             def f():
-                logging.warn('log warn')
+                logging.warning('log warn')
             request.addfinalizer(f)
 
         def test_foo(fixture):
