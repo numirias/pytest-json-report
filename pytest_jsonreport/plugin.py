@@ -7,6 +7,7 @@ import os
 import time
 import warnings
 
+from pytest_metadata.plugin import metadata_key
 import pytest
 import _pytest.hookspec
 
@@ -228,7 +229,7 @@ class JSONReport(JSONReportBase):
             duration=time.time() - self._start_time,
             exitcode=session.exitstatus,
             root=str(session.fspath),
-            environment=getattr(self._config, '_metadata', {}),
+            environment=self._config.stash.get(metadata_key, {}),
             summary=serialize.make_summary(self._json_tests, **summary_data),
         )
         if not self._config.option.json_report_summary:
