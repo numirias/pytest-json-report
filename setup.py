@@ -26,7 +26,7 @@ setup(
     license='MIT',
     install_requires=[
         'pytest>=3.8.0',
-        'pytest-metadata',
+        'pytest-metadata>=3.0.0',
     ],
     entry_points={
         'pytest11': [
