@@ -244,6 +244,7 @@ class JSONReport(JSONReportBase):
         self.report = json_report
         path = self._config.option.json_report_file
         if path:
+            path = os.path.expanduser(os.path.expandvars(path))
             try:
                 self.save_report(path)
             except OSError as e:
