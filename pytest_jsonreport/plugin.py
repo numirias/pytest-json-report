@@ -315,12 +315,17 @@ class LoggingHandler(logging.Handler):
         self.records = []
 
     def emit(self, record):
-        d = dict(record.__dict__)
-        d['msg'] = record.getMessage()
-        d['args'] = None
-        d['exc_info'] = None
-        d.pop('message', None)
-        self.records.append(d)
+        try:
+            d = dict(record.__dict__)
+            d['msg'] = record.getMessage()
+            d['args'] = None
+            d['exc_info'] = None
+            d.pop('message', None)
+            self.records.append(d)
+        except RecursionError:
+            raise
+        except Exception:  # pylint: disable=broad-exception-caught
+            self.handleError(record)
 
 
 class Hooks:
