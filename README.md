@@ -308,6 +308,9 @@ The `result` is a list of the collected nodes:
 
 A list of test nodes. Each completed test stage produces a stage object (`setup`, `call`, `teardown`) with its own `outcome`.
 
+When using `pytest-rerunfailures`, each test node describes its final attempt.
+The outcome and stage details from earlier attempts are replaced when the next attempt starts.
+
 | Key | Description |
 | --- | --- |
 | `nodeid` | ID of the test node. |

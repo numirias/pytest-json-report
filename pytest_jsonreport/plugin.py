@@ -170,9 +170,10 @@ class JSONReport(JSONReportBase):
             report._json_report_extra = {}
 
         nodeid = report.nodeid
-        try:
-            json_testitem = self._json_tests[nodeid]
-        except KeyError:
+        json_testitem = self._json_tests.get(nodeid)
+        # A new setup after a rerun starts a fresh attempt, including its stages.
+        if json_testitem is None or (report.when == 'setup' and
+                                     json_testitem['outcome'] == 'rerun'):
             json_testitem = serialize.make_testitem(
                 nodeid,
                 # report.keywords is a dict (for legacy reasons), but we just
